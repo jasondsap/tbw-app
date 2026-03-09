@@ -1,0 +1,61 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { assignCaseToAdvocate, createNotification, getUsersByRole, writeAuditLog } from '@/lib/db/queries'
+import { sql } from '@/lib/db'
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { caseId: string } }
+) {
+  try {
+    const body = await req.json()
+    const { advocateId, notifyAdvocate = true } = body
+
+    // TODO: get real coordinatorId from Cognito session
+    const coordinatorId = 'system'
+
+    // Fetch coordinator id (first coordinator in DB for now)
+    const coords = await getUsersByRole('education_coordinator')
+    const resolvedCoordinatorId = coords[0]?.id ?? coordinatorId
+
+    const updatedCase = await assignCaseToAdvocate(
+      params.caseId,
+      advocateId,
+      resolvedCoordinatorId,
+      coordinatorId
+    )
+
+    // Fetch learner name for the notification
+    const caseRows = await sql`
+      SELECT c.case_number, p.first_name, p.last_name
+      FROM cases c
+      JOIN participants p ON p.id = c.participant_id
+      WHERE c.id = ${params.caseId}
+    `
+    const caseInfo = caseRows[0]
+
+    if (notifyAdvocate && caseInfo) {
+      await createNotification({
+        userId:   advocateId,
+        caseId:   params.caseId,
+        type:     'case_assigned',
+        title:    `New case assigned: ${caseInfo.first_name} ${caseInfo.last_name}`,
+        body:     `You have been assigned case ${caseInfo.case_number}. Please make initial contact within 2–3 business days.`,
+        priority: 2,
+      })
+    }
+
+    await writeAuditLog({
+      userId:       coordinatorId,
+      action:       'assign',
+      resourceType: 'case',
+      resourceId:   params.caseId,
+      newValues:    { advocateId, status: 'assigned' },
+      ipAddress:    req.headers.get('x-forwarded-for') ?? undefined,
+    })
+
+    return NextResponse.json(updatedCase)
+  } catch (err) {
+    console.error('Error assigning case:', err)
+    return NextResponse.json({ error: 'Failed to assign case' }, { status: 500 })
+  }
+}
