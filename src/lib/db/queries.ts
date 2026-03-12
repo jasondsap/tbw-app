@@ -507,7 +507,13 @@ export async function writeAuditLog(data: {
 
 // ─── EXIT WORKFLOW ────────────────────────────────────────────
 
-export async function getCaseForExit(caseId: string) {
+export async function getCaseForExit(caseId: string): Promise<{
+  id: string; case_number: string; status: string
+  current_school: string | null; current_grade: string | null
+  first_name: string; last_name: string; preferred_name: string | null
+  advocate_name: string | null
+  goals: Record<string, any>[]; barriers: string[]
+} | null> {
   const rows = await sql`
     SELECT
       c.id, c.case_number, c.status, p.current_school, p.current_grade,
@@ -538,7 +544,7 @@ export async function getCaseForExit(caseId: string) {
     Object.keys(b).forEach(k => { if (k !== 'primaryBarrier') barriers.push(k.replace(/_/g, ' ')) })
   }
 
-  return { ...c, goals, barriers }
+  return { ...c, goals, barriers } as any
 }
 
 // ─── ENROLLMENT FORM ─────────────────────────────────────────
