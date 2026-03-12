@@ -4,12 +4,13 @@ import { updateGoalProgress } from '@/lib/db/queries'
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { goalId: string } }
+  { params }: { params: Promise<{ goalId: string }> }
 ) {
+  const { goalId } = await params
   try {
     const body = await req.json()
     const goal = await updateGoalProgress(
-      params.goalId,
+      goalId,
       body.progressPct,
       body.status,
       body.outcomeNotes ?? undefined

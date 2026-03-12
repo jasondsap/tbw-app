@@ -3,8 +3,9 @@ import { sql } from '@/lib/db'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { stableId: string } }
+  { params }: { params: Promise<{ stableId: string }> }
 ) {
+  const { stableId } = await params
   try {
     const body = await req.json()
     const userId = 'system' // TODO: real auth
@@ -23,7 +24,7 @@ export async function POST(
         currently_enrolled, notes, outcome, refer_back_reason,
         logged_by, logged_at
       ) VALUES (
-        ${params.stableId},
+        ${stableId},
         ${pullDate},
         ${daysReviewed},
         ${unexcusedAbsences ?? 0},
@@ -46,7 +47,7 @@ export async function POST(
         outcome    = ${outcome},
         closed_at  = ${outcome === 'stable' ? new Date().toISOString() : null},
         updated_at = NOW()
-      WHERE id = ${params.stableId}
+      WHERE id = ${stableId}
     `
 
     // If closing as stable, close the case too
@@ -55,14 +56,14 @@ export async function POST(
         UPDATE cases SET
           status = 'closed',
           updated_at  = NOW()
-        WHERE id = (SELECT case_id FROM services WHERE id = ${params.stableId})
+        WHERE id = (SELECT case_id FROM services WHERE id = ${stableId})
       `
     }
 
     // If referring back, create a case note flagging it
     if (outcome === 'refer_back') {
       const caseRow = await sql`
-        SELECT case_id FROM services WHERE id = ${params.stableId}
+        SELECT case_id FROM services WHERE id = ${stableId}
       `
       if (caseRow.length) {
         await sql`
