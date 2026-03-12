@@ -543,7 +543,12 @@ export async function getCaseForExit(caseId: string) {
 
 // ─── ENROLLMENT FORM ─────────────────────────────────────────
 
-export async function getCaseForEnrollment(caseId: string) {
+export async function getCaseForEnrollment(caseId: string): Promise<{
+  id: string; case_number: string; current_school: string | null; current_grade: string | null
+  first_name: string; last_name: string; preferred_name: string | null
+  pronouns: string | null; how_heard: string | null; referral_source: string | null
+  existingForm: Record<string, any> | null
+} | null> {
   const rows = await sql`
     SELECT
       c.id, c.case_number, p.current_school, p.current_grade,
@@ -560,7 +565,7 @@ export async function getCaseForEnrollment(caseId: string) {
     SELECT * FROM enrollment_forms WHERE case_id = ${caseId} LIMIT 1
   `
 
-  return { ...c, existingForm: existing[0] ?? null }
+  return { ...c, existingForm: existing[0] ?? null } as any
 }
 
 // ─── STABLE MONITORING ────────────────────────────────────────
