@@ -4,8 +4,9 @@ import { buildS3Key, getPresignedUploadUrl, BUCKET } from '@/lib/storage/s3'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { caseId: string } }
+  { params }: { params: Promise<{ caseId: string }> }
 ) {
+  const { caseId } = await params
   const user = await getApiUser(req)
   if (!user) return unauthorized()
 
@@ -27,7 +28,7 @@ export async function POST(
       return NextResponse.json({ error: 'File type not allowed' }, { status: 400 })
     }
 
-    const s3Key = buildS3Key(params.caseId, fileName)
+    const s3Key = buildS3Key(caseId, fileName)
     const uploadUrl = await getPresignedUploadUrl(s3Key, mimeType)
 
     return NextResponse.json({ uploadUrl, s3Key, bucket: BUCKET })

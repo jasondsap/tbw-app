@@ -7,8 +7,9 @@ import { getPresignedDownloadUrl, deleteS3Object } from '@/lib/storage/s3'
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { caseId: string; docId: string } }
+  { params }: { params: Promise<{ caseId: string; docId: string }> }
 ) {
+  const { caseId, docId } = await params
   const user = await getApiUser(req)
   if (!user) return unauthorized()
 
@@ -16,8 +17,8 @@ export async function GET(
     const rows = await sql`
       SELECT id, file_name, s3_key, deleted_at
       FROM case_documents
-      WHERE id = ${params.docId}
-        AND case_id = ${params.caseId}
+      WHERE id = ${docId}
+        AND case_id = ${caseId}
     `
 
     const doc = rows[0]
@@ -36,8 +37,9 @@ export async function GET(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { caseId: string; docId: string } }
+  { params }: { params: Promise<{ caseId: string; docId: string }> }
 ) {
+  const { caseId, docId } = await params
   const user = await getApiUser(req)
   if (!user) return unauthorized()
 
@@ -49,8 +51,8 @@ export async function DELETE(
   try {
     const rows = await sql`
       SELECT id, s3_key FROM case_documents
-      WHERE id = ${params.docId}
-        AND case_id = ${params.caseId}
+      WHERE id = ${docId}
+        AND case_id = ${caseId}
         AND deleted_at IS NULL
     `
 
@@ -61,7 +63,7 @@ export async function DELETE(
     await sql`
       UPDATE case_documents
       SET deleted_at = NOW(), deleted_by = ${user.dbId}
-      WHERE id = ${params.docId}
+      WHERE id = ${docId}
     `
 
     // Also remove from S3

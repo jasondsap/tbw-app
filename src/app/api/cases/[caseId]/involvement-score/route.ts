@@ -4,15 +4,16 @@ import { upsertInvolvementScore } from '@/lib/db/queries'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { caseId: string } }
+  { params }: { params: Promise<{ caseId: string }> }
 ) {
+  const { caseId } = await params
   try {
     const body = await req.json()
     // TODO: get real user from Cognito session
     const scoredBy = 'system'
 
     const score = await upsertInvolvementScore({
-      caseId:      params.caseId,
+      caseId:      caseId,
       scoredBy,
       urgency:     body.urgency,
       involvement: body.involvement,

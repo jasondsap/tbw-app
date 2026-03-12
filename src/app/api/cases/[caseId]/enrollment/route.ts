@@ -3,12 +3,13 @@ import { sql } from '@/lib/db'
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { caseId: string } }
+  { params }: { params: Promise<{ caseId: string }> }
 ) {
+  const { caseId } = await params
   try {
     const rows = await sql`
       SELECT * FROM enrollment_forms
-      WHERE case_id = ${params.caseId}
+      WHERE case_id = ${caseId}
       ORDER BY created_at DESC LIMIT 1
     `
     return NextResponse.json(rows[0] ?? null)
@@ -20,8 +21,9 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { caseId: string } }
+  { params }: { params: Promise<{ caseId: string }> }
 ) {
+  const { caseId } = await params
   try {
     const body = await req.json()
     const userId = 'system' // TODO: real auth
@@ -34,7 +36,7 @@ export async function POST(
 
     // Upsert enrollment form
     const existing = await sql`
-      SELECT id FROM enrollment_forms WHERE case_id = ${params.caseId} LIMIT 1
+      SELECT id FROM enrollment_forms WHERE case_id = ${caseId} LIMIT 1
     `
 
     if (existing.length > 0) {
@@ -51,7 +53,7 @@ export async function POST(
           advocate_notes    = ${notes || ''},
           status            = ${status},
           updated_at        = NOW()
-        WHERE case_id = ${params.caseId}
+        WHERE case_id = ${caseId}
       `
     } else {
       await sql`
@@ -61,7 +63,7 @@ export async function POST(
           meeting_date, meeting_type, advocate_notes,
           status, created_by, created_at, updated_at
         ) VALUES (
-          ${params.caseId},
+          ${caseId},
           ${JSON.stringify(participant)},
           ${JSON.stringify(education)},
           ${JSON.stringify(goals)},
@@ -85,7 +87,7 @@ export async function POST(
           current_grade       = ${education?.currentGrade || ''},
           enrolled_at         = ${meetingDate ? new Date(meetingDate).toISOString() : null},
           updated_at          = NOW()
-        WHERE id = ${params.caseId}
+        WHERE id = ${caseId}
       `
 
       // Update participant preferred name + pronouns if provided
@@ -95,7 +97,7 @@ export async function POST(
             preferred_name = COALESCE(NULLIF(${participant?.preferredName || ''}, ''), preferred_name),
             pronouns       = COALESCE(NULLIF(${participant?.pronouns || ''}, ''), pronouns),
             updated_at     = NOW()
-          WHERE id = (SELECT participant_id FROM cases WHERE id = ${params.caseId})
+          WHERE id = (SELECT participant_id FROM cases WHERE id = ${caseId})
         `
       }
     }

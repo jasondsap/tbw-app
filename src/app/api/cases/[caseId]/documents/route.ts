@@ -7,8 +7,9 @@ import { BUCKET } from '@/lib/storage/s3'
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { caseId: string } }
+  { params }: { params: Promise<{ caseId: string }> }
 ) {
+  const { caseId } = await params
   const user = await getApiUser(req)
   if (!user) return unauthorized()
 
@@ -20,7 +21,7 @@ export async function GET(
         u.first_name || ' ' || u.last_name AS uploaded_by_name
       FROM case_documents d
       LEFT JOIN users u ON u.id = d.uploaded_by
-      WHERE d.case_id = ${params.caseId}
+      WHERE d.case_id = ${caseId}
         AND d.deleted_at IS NULL
       ORDER BY d.created_at DESC
     `
@@ -35,8 +36,9 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { caseId: string } }
+  { params }: { params: Promise<{ caseId: string }> }
 ) {
+  const { caseId } = await params
   const user = await getApiUser(req)
   if (!user) return unauthorized()
 
@@ -52,7 +54,7 @@ export async function POST(
         case_id, uploaded_by, file_name, file_size,
         mime_type, s3_key, s3_bucket, doc_type
       ) VALUES (
-        ${params.caseId}, ${user.dbId}, ${fileName}, ${fileSize ?? null},
+        ${caseId}, ${user.dbId}, ${fileName}, ${fileSize ?? null},
         ${mimeType ?? null}, ${s3Key}, ${BUCKET}, ${docType ?? 'other'}
       )
       RETURNING id, file_name, doc_type, created_at

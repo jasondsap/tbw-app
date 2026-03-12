@@ -7,8 +7,9 @@ import { sendConsentForSignature, TEMPLATES } from '@/lib/esign/dropbox-sign'
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { caseId: string } }
+  { params }: { params: Promise<{ caseId: string }> }
 ) {
+  const { caseId } = await params
   const user = await getApiUser(req)
   if (!user) return unauthorized()
 
@@ -25,7 +26,7 @@ export async function GET(
         u.first_name || ' ' || u.last_name AS sent_by_name
       FROM signature_requests sr
       LEFT JOIN users u ON u.id = sr.sent_by
-      WHERE sr.case_id = ${params.caseId}
+      WHERE sr.case_id = ${caseId}
       ORDER BY sr.created_at DESC
     `
     return NextResponse.json(rows)
@@ -39,8 +40,9 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { caseId: string } }
+  { params }: { params: Promise<{ caseId: string }> }
 ) {
+  const { caseId } = await params
   const user = await getApiUser(req)
   if (!user) return unauthorized()
 
@@ -97,7 +99,7 @@ export async function POST(
     const result = await sendConsentForSignature({
       templateId,
       title,
-      caseId:           params.caseId,
+      caseId:           caseId,
       participantName,
       participantEmail,
       requiresGuardian: !!requiresGuardian,
@@ -115,7 +117,7 @@ export async function POST(
         guardian_email, guardian_name, requires_guardian,
         status, sent_by
       ) VALUES (
-        ${params.caseId}, ${result.requestId}, ${templateId},
+        ${caseId}, ${result.requestId}, ${templateId},
         ${docType}, ${title},
         ${participantEmail}, ${participantName},
         ${guardianEmail ?? null}, ${guardianName ?? null}, ${!!requiresGuardian},

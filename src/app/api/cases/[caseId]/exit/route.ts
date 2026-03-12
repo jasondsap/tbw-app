@@ -4,8 +4,9 @@ import { writeAuditLog } from '@/lib/db/queries'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { caseId: string } }
+  { params }: { params: Promise<{ caseId: string }> }
 ) {
+  const { caseId } = await params
   try {
     const {
       reason, meetingHeld, contactAttempts,
@@ -40,7 +41,7 @@ export async function POST(
           case_id, user_id, note_type, note_date,
           contact_method, full_note, created_at
         ) VALUES (
-          ${params.caseId}, ${userId}, 'exit_note',
+          ${caseId}, ${userId}, 'exit_note',
           ${exitDate}, 'in_person',
           ${caseNote}, NOW()
         )
@@ -59,7 +60,7 @@ export async function POST(
           end_date       = ${exitDate},
           outcome        = ${outcomeLabel},
           updated_at     = NOW()
-        WHERE case_id    = ${params.caseId}
+        WHERE case_id    = ${caseId}
           AND service_type = 'education_advocacy'
           AND status     = 'active'
       `
@@ -70,7 +71,7 @@ export async function POST(
           case_id, service_type, status,
           start_date, planned_end_date, created_at
         ) VALUES (
-          ${params.caseId}, 'stable', 'active',
+          ${caseId}, 'stable', 'active',
           ${exitDate}, ${stablePlannedEnd}, NOW()
         )
       `
@@ -85,7 +86,7 @@ export async function POST(
         await sql`
           UPDATE cases
           SET advocate_id = ${dataSpecialistId}, updated_at = NOW()
-          WHERE id = ${params.caseId}
+          WHERE id = ${caseId}
         `
       }
 
@@ -100,7 +101,7 @@ export async function POST(
           raw_interview_data, raw_toolkit_data,
           created_by, created_at
         ) VALUES (
-          ${params.caseId}, ${exitDate}, ${reason},
+          ${caseId}, ${exitDate}, ${reason},
           ${meetingHeld}, ${interview?.currentSchool ?? ''},
           ${interview?.currentGrade ?? ''}, ${interview?.graduated ?? null},
           ${interview?.employed ?? null}, ${interview?.occupation ?? ''},
@@ -122,7 +123,7 @@ export async function POST(
             INSERT INTO contact_attempts (
               case_id, attempt_date, method, notes, created_at
             ) VALUES (
-              ${params.caseId}, ${attempt.date}, ${attempt.method},
+              ${caseId}, ${attempt.date}, ${attempt.method},
               ${attempt.notes ?? ''}, NOW()
             )
           `
@@ -136,7 +137,7 @@ export async function POST(
           exit_reason   = ${reason},
           exit_date     = ${exitDate},
           updated_at    = NOW()
-        WHERE id = ${params.caseId}
+        WHERE id = ${caseId}
       `
     })
 
@@ -145,7 +146,7 @@ export async function POST(
       userId,
       action:       'exit',
       resourceType: 'case',
-      resourceId:   params.caseId,
+      resourceId:   caseId,
       newValues:    { reason, exitDate, stablePlannedEnd },
       ipAddress:    req.headers.get('x-forwarded-for') ?? undefined,
     })

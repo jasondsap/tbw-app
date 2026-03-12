@@ -4,8 +4,9 @@ import { sql } from '@/lib/db'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { caseId: string } }
+  { params }: { params: Promise<{ caseId: string }> }
 ) {
+  const { caseId } = await params
   try {
     const body = await req.json()
     const { advocateId, notifyAdvocate = true } = body
@@ -18,7 +19,7 @@ export async function POST(
     const resolvedCoordinatorId = coords[0]?.id ?? coordinatorId
 
     const updatedCase = await assignCaseToAdvocate(
-      params.caseId,
+      caseId,
       advocateId,
       resolvedCoordinatorId,
       coordinatorId
@@ -29,14 +30,14 @@ export async function POST(
       SELECT c.case_number, p.first_name, p.last_name
       FROM cases c
       JOIN participants p ON p.id = c.participant_id
-      WHERE c.id = ${params.caseId}
+      WHERE c.id = ${caseId}
     `
     const caseInfo = caseRows[0]
 
     if (notifyAdvocate && caseInfo) {
       await createNotification({
         userId:   advocateId,
-        caseId:   params.caseId,
+        caseId:   caseId,
         type:     'case_assigned',
         title:    `New case assigned: ${caseInfo.first_name} ${caseInfo.last_name}`,
         body:     `You have been assigned case ${caseInfo.case_number}. Please make initial contact within 2–3 business days.`,
@@ -48,7 +49,7 @@ export async function POST(
       userId:       coordinatorId,
       action:       'assign',
       resourceType: 'case',
-      resourceId:   params.caseId,
+      resourceId:   caseId,
       newValues:    { advocateId, status: 'assigned' },
       ipAddress:    req.headers.get('x-forwarded-for') ?? undefined,
     })
