@@ -70,7 +70,7 @@ export function EnrollmentForm({ caseId, participantName, prefill, existingData 
   const [submitted, setSubmitted]   = useState(form.status === 'submitted')
   const [generatingGoals, setGen]   = useState(false)
   const [goalsGenerated, setGoalsGenerated] = useState(false)
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
 
   const pct = calcCompleteness(form)
