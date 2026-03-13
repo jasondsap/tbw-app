@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Zap, Send, Loader2, ChevronDown, ChevronUp, Clock, Phone, MessageSquare, Video, Users } from 'lucide-react'
+import { Zap, Send, Loader2, ChevronDown, ChevronUp, Clock, Phone, MessageSquare, Video, Users, FileText } from 'lucide-react'
 import { cn, formatDate } from '@/lib/utils'
 
 interface NoteComposerProps {
