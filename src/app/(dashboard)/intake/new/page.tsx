@@ -7,11 +7,11 @@ import { cn } from '@/lib/utils'
 
 // ─── Reusable form field components ──────────────────────────
 
-function Field({ label, required, children, hint }: {
-  label: string; required?: boolean; children: React.ReactNode; hint?: string
+function Field({ label, required, children, hint, className }: {
+  label: string; required?: boolean; children: React.ReactNode; hint?: string; className?: string
 }) {
   return (
-    <div>
+    <div className={className}>
       <label className="form-label">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
