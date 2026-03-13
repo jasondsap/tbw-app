@@ -22,7 +22,7 @@ export function AdvocateCaseloadCard({ advocate, cases }: AdvocateCaseloadCardPr
   const capacity     = activeCases / 10
 
   // Cases: flag derived from days_since_note
-  const withFlag = cases.map(c => ({
+  const withFlag: Record<string, any>[] = cases.map(c => ({
     ...c,
     flag: (c.days_since_note ?? 0) >= 14 ? 'at_risk'
         : (c.days_since_note ?? 0) >= 7  ? 'overdue_note'
