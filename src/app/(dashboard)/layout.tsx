@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/cognito'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -7,9 +8,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  console.log('[layout] calling getSession...')
   const session = await getSession()
-  console.log('[layout] session result:', session ? `OK user=${session.email}` : 'NULL')
 
   if (!session) {
     redirect('/login')
