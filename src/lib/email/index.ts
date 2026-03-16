@@ -23,7 +23,7 @@ export async function sendEmail(opts: {
       to:       Array.isArray(opts.to) ? opts.to : [opts.to],
       subject:  opts.subject,
       html:     opts.html,
-      reply_to: opts.replyTo,
+      replyTo: opts.replyTo,
     })
     if (error) {
       console.error('Resend error:', error)
