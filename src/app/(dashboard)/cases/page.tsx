@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import { Search, Filter, AlertCircle } from 'lucide-react'
 import { cn, statusColor, statusDot, statusLabel, fullName, formatDate, scoreColor, gradeDisplay } from '@/lib/utils'

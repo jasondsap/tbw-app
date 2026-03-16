@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { getCoordinatorDashboard } from '@/lib/db/queries'
 import { CoordinatorDashboard } from '@/components/coordinator/coordinator-dashboard'
 

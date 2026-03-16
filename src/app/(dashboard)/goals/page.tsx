@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { getSessionWithDb } from '@/lib/auth/cognito'
 import { getAllGoals } from '@/lib/db/queries'

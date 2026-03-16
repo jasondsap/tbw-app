@@ -1,14 +1,14 @@
+export const dynamic = 'force-dynamic'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, FileText } from 'lucide-react'
 import { getCaseForEnrollment } from '@/lib/db/queries'
 import { EnrollmentForm } from '@/components/enrollment/enrollment-form'
 
-interface PageProps { params: Promise<{ caseId: string }> }
+interface PageProps { params: { caseId: string } }
 
 export default async function EnrollmentPage({ params }: PageProps) {
-  const { caseId } = await params
-  const caseData = await getCaseForEnrollment(caseId)
+  const caseData = await getCaseForEnrollment(params.caseId)
   if (!caseData) notFound()
 
   const participantName = `${caseData.first_name} ${caseData.last_name}`
@@ -55,7 +55,7 @@ export default async function EnrollmentPage({ params }: PageProps) {
     <div className="min-h-screen bg-white">
       <div className="sticky top-0 z-20 bg-white border-b border-slate-100 px-6 py-3.5">
         <div className="flex items-center gap-4 max-w-5xl mx-auto">
-          <Link href={`/cases/${caseId}`} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
+          <Link href={`/cases/${params.caseId}`} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
             <ArrowLeft size={14} />{participantName}
           </Link>
           <span className="text-slate-200">/</span>
@@ -70,7 +70,7 @@ export default async function EnrollmentPage({ params }: PageProps) {
       </div>
       <div className="max-w-5xl mx-auto">
         <EnrollmentForm
-          caseId={caseId}
+          caseId={params.caseId}
           participantName={participantName}
           prefill={prefill as any}
           existingData={existingData}

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { getSites } from '@/lib/db/queries'
 import { SitesDashboard } from '@/components/sites/sites-dashboard'
 

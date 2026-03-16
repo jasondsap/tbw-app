@@ -1,14 +1,14 @@
+export const dynamic = 'force-dynamic'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { getCaseForExit } from '@/lib/db/queries'
 import { ExitWizard } from '@/components/exit/exit-wizard'
 
-interface PageProps { params: Promise<{ caseId: string }> }
+interface PageProps { params: { caseId: string } }
 
 export default async function ExitPage({ params }: PageProps) {
-  const { caseId } = await params
-  const caseData = await getCaseForExit(caseId)
+  const caseData = await getCaseForExit(params.caseId)
   if (!caseData) notFound()
 
   const participantName = caseData.preferred_name
@@ -19,7 +19,7 @@ export default async function ExitPage({ params }: PageProps) {
     <div className="min-h-screen bg-slate-50">
       <div className="bg-white border-b border-slate-200 px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center gap-4">
-          <Link href={`/cases/${caseId}`} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
+          <Link href={`/cases/${params.caseId}`} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
             <ArrowLeft size={14} />{participantName}
           </Link>
           <span className="text-slate-300">/</span>
@@ -29,7 +29,7 @@ export default async function ExitPage({ params }: PageProps) {
       </div>
       <div className="max-w-3xl mx-auto px-6 py-8">
         <ExitWizard
-          caseId={caseId}
+          caseId={params.caseId}
           caseNumber={caseData.case_number}
           participantName={participantName}
           advocateName={caseData.advocate_name ?? 'Unassigned'}
