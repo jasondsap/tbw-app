@@ -326,7 +326,7 @@ export function ReportsDashboard() {
 
       {/* ── Tabs ────────────────────────────────────────────────────────── */}
       <div className="flex gap-0 border-b border-slate-100">
-        {tabs.map(t => (
+        {tabs.map((t: Record<string, any>) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -377,7 +377,7 @@ export function ReportsDashboard() {
                   { label: 'Reached Goals',      color: '#0d9488' },
                   { label: 'Requested Exit',     color: '#3b82f6' },
                   { label: 'Stopped Responding', color: '#94a3b8' },
-                ].map(l => (
+                ].map((l: { label: string; color: string }) => (
                   <div key={l.label} className="flex items-center gap-1.5 text-xs text-slate-500">
                     <div className="w-2.5 h-2.5 rounded-sm" style={{ background: l.color }} />
                     {l.label}
@@ -495,7 +495,7 @@ export function ReportsDashboard() {
               <SectionTitle>Schools</SectionTitle>
               <div className="card space-y-2">
                 {schoolDist.map((s: Record<string, any>) => {
-                  const total = schoolDist.reduce((sum, x) => sum + x.count, 0)
+                  const total = schoolDist.reduce((sum: number, x: Record<string, any>) => sum + x.count, 0)
                   const pct = Math.round((s.count / total) * 100)
                   return (
                     <div key={s.school} className="space-y-1">
