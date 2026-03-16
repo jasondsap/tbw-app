@@ -21,7 +21,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       groups[0] ??
       'advocate'
 
-    const dbUser = await getUserByCognitoSub(cognitoUser.userId)
+    const dbUser = await getUserByCognitoSub(cognitoUser.userId) as User | null
 
     return {
       cognitoSub: cognitoUser.userId,
