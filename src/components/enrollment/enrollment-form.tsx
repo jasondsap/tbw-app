@@ -96,7 +96,7 @@ export function EnrollmentForm({ caseId, participantName, prefill, existingData 
   const update = (patch: Partial<EnrollmentFormData>) => {
     setForm(prev => {
       const next = { ...prev, ...patch }
-      clearTimeout(saveTimer.current)
+      if (saveTimer.current) clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(() => saveDraft(next), 1500)
       return next
     })
@@ -108,7 +108,7 @@ export function EnrollmentForm({ caseId, participantName, prefill, existingData 
   ) => {
     setForm(prev => {
       const next = { ...prev, [key]: { ...(prev[key] as object), ...patch } }
-      clearTimeout(saveTimer.current)
+      if (saveTimer.current) clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(() => saveDraft(next), 1500)
       return next
     })
