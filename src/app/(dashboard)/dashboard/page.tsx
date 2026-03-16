@@ -20,7 +20,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardClient
-      data={data ?? { tasks: [], recentNotes: [], caseload: [], stats: {} }}
+      data={data ?? { myCases: [], overdueNotes: [], recentActivity: [], stats: {} }}
       user={{ id: dbId, role: session.role, name: `${session.firstName} ${session.lastName}` }}
     />
   )
