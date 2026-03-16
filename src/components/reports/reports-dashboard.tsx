@@ -184,9 +184,9 @@ function BarriersChart({ data }: { data: any[] }) {
 
 // ── Missing data table ────────────────────────────────────────────────────────
 function MissingDataPanel({ missingData }: { missingData: any[] }) {
-  const high   = missingData.filter(f => f.severity === 'high')
-  const medium = missingData.filter(f => f.severity === 'medium')
-  const low    = missingData.filter(f => f.severity === 'low')
+  const high   = missingData.filter((f: Record<string, any>) => f.severity === 'high')
+  const medium = missingData.filter((f: Record<string, any>) => f.severity === 'medium')
+  const low    = missingData.filter((f: Record<string, any>) => f.severity === 'low')
 
   const Section = ({ title, items, color }: { title: string; items: any[]; color: string }) => (
     <div>
@@ -285,7 +285,7 @@ export function ReportsDashboard() {
     { id: 'overview',     label: 'Overview' },
     { id: 'annual',       label: 'Annual Report' },
     { id: 'demographics', label: 'Demographics' },
-    { id: 'missing',      label: `Missing Data ${missingData.filter(f => f.severity === 'high').length > 0 ? '🔴' : ''}` },
+    { id: 'missing',      label: `Missing Data ${missingData.filter((f: Record<string, any>) => f.severity === 'high').length > 0 ? '🔴' : ''}` },
   ]
 
   return (
