@@ -195,7 +195,7 @@ function MissingDataPanel({ missingData }: { missingData: any[] }) {
         <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wide">{title} — {items.length}</h3>
       </div>
       <div className="space-y-2">
-        {items.map(flag => (
+        {items.map((flag: Record<string, any>) => (
           <div key={flag.caseNumber} className="flex items-start gap-3 p-3 bg-white border border-slate-100 rounded-lg">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -204,7 +204,7 @@ function MissingDataPanel({ missingData }: { missingData: any[] }) {
                 <span className="text-xs text-slate-400">· {flag.advocate}</span>
               </div>
               <div className="flex flex-wrap gap-1.5 mt-1.5">
-                {flag.issues.map(issue => (
+                {flag.issues.map((issue: string) => (
                   <span key={issue} className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">
                     {issue}
                   </span>
@@ -494,7 +494,7 @@ export function ReportsDashboard() {
             <div>
               <SectionTitle>Schools</SectionTitle>
               <div className="card space-y-2">
-                {schoolDist.map(s => {
+                {schoolDist.map((s: Record<string, any>) => {
                   const total = schoolDist.reduce((sum, x) => sum + x.count, 0)
                   const pct = Math.round((s.count / total) * 100)
                   return (
