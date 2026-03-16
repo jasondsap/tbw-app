@@ -108,7 +108,7 @@ function AnnualReportTable({ year, annualTable }: { year: number; annualTable: a
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {annualTable.rows.map(row => {
+            {annualTable.rows.map((row: Record<string, any>) => {
               const rate = row.progress != null && row.served > 0
                 ? Math.round((row.progress / (row.progress + (row.noProgress ?? 0))) * 100)
                 : null
