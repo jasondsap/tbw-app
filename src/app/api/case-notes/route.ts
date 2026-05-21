@@ -1,12 +1,14 @@
 // src/app/api/case-notes/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createCaseNote, writeAuditLog } from '@/lib/db/queries'
+import { getApiUser, unauthorized } from '@/lib/auth/api-auth'
 
 export async function POST(req: NextRequest) {
   try {
+    const authUser = await getApiUser(req)
+    if (!authUser) return unauthorized()
+
     const body = await req.json()
-    // TODO: get real authorId from Cognito session
-    const authorId = body.authorId ?? 'system'
 
     const note = await createCaseNote({
       caseId:          body.caseId,
@@ -21,18 +23,18 @@ export async function POST(req: NextRequest) {
       aiDrafted:       body.aiDrafted ?? false,
       aiRawInput:      body.aiRawInput ?? null,
       goalIds:         body.goalIds ?? null,
-      authorId,
+      authorId:        authUser.dbId,
     })
 
     await writeAuditLog({
-      userId: authorId, action: 'create',
+      userId: authUser.dbId, action: 'create',
       resourceType: 'case_note', resourceId: note?.id,
       ipAddress: req.headers.get('x-forwarded-for') ?? undefined,
     })
 
     return NextResponse.json(note)
   } catch (err) {
-    console.error(err)
+    console.error('POST /api/case-notes error:', err)
     return NextResponse.json({ error: 'Failed to save note' }, { status: 500 })
   }
 }
