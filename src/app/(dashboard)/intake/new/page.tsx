@@ -1,9 +1,15 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, User, Phone, MapPin, GraduationCap, Send, Loader2 } from 'lucide-react'
+import { ArrowLeft, User, Phone, MapPin, GraduationCap, Send, Loader2, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+interface IntakeSpecialist {
+  id:         string
+  firstName:  string
+  lastName:   string
+}
 
 // ─── Reusable form field components ──────────────────────────
 
@@ -58,7 +64,16 @@ function SectionHeader({ icon: Icon, title, subtitle }: {
 export default function NewReferralPage() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [intakeSpecialists, setIntakeSpecialists] = useState<IntakeSpecialist[]>([])
   const [step, setStep] = useState<1 | 2>(1)
+
+  useEffect(() => {
+    fetch('/api/users?role=intake_specialist')
+      .then(r => r.ok ? r.json() : [])
+      .then(setIntakeSpecialists)
+      .catch(err => console.error('Failed to load intake specialists:', err))
+  }, [])
 
   const [form, setForm] = useState({
     // Participant
@@ -82,6 +97,7 @@ export default function NewReferralPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSubmitError(null)
     setIsSubmitting(true)
     try {
       const res = await fetch('/api/intake/referral', {
@@ -89,11 +105,15 @@ export default function NewReferralPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      if (!res.ok) throw new Error('Failed to create referral')
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || `Server returned ${res.status}`)
+      }
       const data = await res.json()
-      router.push(`/intake/${data.caseId}`)
+      router.push(`/cases/${data.caseId}`)
     } catch (err) {
       console.error(err)
+      setSubmitError(err instanceof Error ? err.message : 'Failed to create referral')
       setIsSubmitting(false)
     }
   }
@@ -311,9 +331,16 @@ export default function NewReferralPage() {
                 <Field label="Assigned Intake Specialist" required className="col-span-2">
                   <Select name="intakeSpecialistId" value={form.intakeSpecialistId}
                     onChange={handleChange} required>
-                    <option value="">Select intake specialist...</option>
-                    {/* TODO: Load from DB */}
-                    <option value="mock-gail-id">Gail T. (Intake Specialist)</option>
+                    <option value="">
+                      {intakeSpecialists.length === 0
+                        ? 'Loading intake specialists…'
+                        : 'Select intake specialist…'}
+                    </option>
+                    {intakeSpecialists.map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.firstName} {u.lastName}
+                      </option>
+                    ))}
                   </Select>
                 </Field>
 
@@ -333,6 +360,16 @@ export default function NewReferralPage() {
                 </p>
               </div>
             </div>
+
+            {submitError && (
+              <div className="flex items-start gap-2 p-3.5 bg-red-50 border border-red-200 rounded-lg">
+                <AlertCircle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <p className="font-semibold text-red-800">Could not create referral</p>
+                  <p className="text-red-700 mt-0.5">{submitError}</p>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between">
               <button type="button" onClick={() => setStep(1)}
