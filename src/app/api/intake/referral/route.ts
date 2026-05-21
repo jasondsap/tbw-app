@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createParticipant, createCase, writeAuditLog, getUsersByRole } from '@/lib/db/queries'
-import { getApiUser } from '@/lib/auth/api-auth'
+import { getApiUser, unauthorized } from '@/lib/auth/api-auth'
 import { sendEmail } from '@/lib/email'
 import { buildIntakeThankYouEmail, buildStaffIntakeNotifyEmail } from '@/lib/email/templates'
 
 export async function POST(req: NextRequest) {
   try {
+    const authUser = await getApiUser(req)
+    if (!authUser) return unauthorized()
+
     const body = await req.json()
 
-    const authUser = await getApiUser(req)
-    const createdBy = authUser?.dbId ?? body.intakeSpecialistId ?? 'system'
-    const intakeSpecialistName = authUser
-      ? `${authUser.firstName} ${authUser.lastName}`
-      : 'The Book Works Team'
-    const intakeSpecialistEmail = authUser?.email
+    const createdBy = authUser.dbId
+    const intakeSpecialistName = `${authUser.firstName} ${authUser.lastName}`
+    const intakeSpecialistEmail = authUser.email
 
     // 1. Create participant
     const participant = await createParticipant({

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
+import { getApiUser, unauthorized } from '@/lib/auth/api-auth'
 
 export async function POST(
   req: NextRequest,
@@ -7,8 +8,11 @@ export async function POST(
 ) {
   const { stableId } = await params
   try {
+    const authUser = await getApiUser(req)
+    if (!authUser) return unauthorized()
+
     const body = await req.json()
-    const userId = 'system' // TODO: real auth
+    const userId = authUser.dbId
 
     const {
       pullDate, daysReviewed,

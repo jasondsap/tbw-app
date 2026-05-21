@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
+import { getApiUser, unauthorized } from '@/lib/auth/api-auth'
 
 export async function GET(
   _req: NextRequest,
@@ -25,8 +26,11 @@ export async function POST(
 ) {
   const { caseId } = await params
   try {
+    const authUser = await getApiUser(req)
+    if (!authUser) return unauthorized()
+
     const body = await req.json()
-    const userId = 'system' // TODO: real auth
+    const userId = authUser.dbId
 
     const {
       participant, education, goals, challenges,

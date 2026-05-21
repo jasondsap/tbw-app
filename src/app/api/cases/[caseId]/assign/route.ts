@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { assignCaseToAdvocate, createNotification, getUsersByRole, writeAuditLog } from '@/lib/db/queries'
+import { assignCaseToAdvocate, createNotification, writeAuditLog } from '@/lib/db/queries'
+import { getApiUser, unauthorized } from '@/lib/auth/api-auth'
 import { sql } from '@/lib/db'
 
 export async function POST(
@@ -8,20 +9,19 @@ export async function POST(
 ) {
   const { caseId } = await params
   try {
+    const authUser = await getApiUser(req)
+    if (!authUser) return unauthorized()
+
     const body = await req.json()
     const { advocateId, notifyAdvocate = true } = body
 
-    // TODO: get real coordinatorId from Cognito session
-    const coordinatorId = 'system'
-
-    // Fetch coordinator id (first coordinator in DB for now)
-    const coords = await getUsersByRole('education_coordinator')
-    const resolvedCoordinatorId = coords[0]?.id ?? coordinatorId
+    // The signed-in coordinator owns the assignment.
+    const coordinatorId = authUser.dbId
 
     const updatedCase = await assignCaseToAdvocate(
       caseId,
       advocateId,
-      resolvedCoordinatorId,
+      coordinatorId,
       coordinatorId
     )
 

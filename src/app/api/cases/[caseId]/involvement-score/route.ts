@@ -1,6 +1,7 @@
 // src/app/api/cases/[caseId]/involvement-score/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { upsertInvolvementScore } from '@/lib/db/queries'
+import { getApiUser, unauthorized } from '@/lib/auth/api-auth'
 
 export async function POST(
   req: NextRequest,
@@ -8,13 +9,14 @@ export async function POST(
 ) {
   const { caseId } = await params
   try {
+    const authUser = await getApiUser(req)
+    if (!authUser) return unauthorized()
+
     const body = await req.json()
-    // TODO: get real user from Cognito session
-    const scoredBy = 'system'
 
     const score = await upsertInvolvementScore({
       caseId:      caseId,
-      scoredBy,
+      scoredBy:    authUser.dbId,
       urgency:     body.urgency,
       involvement: body.involvement,
       score:       body.score,

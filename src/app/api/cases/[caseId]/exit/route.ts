@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { writeAuditLog } from '@/lib/db/queries'
+import { getApiUser, unauthorized } from '@/lib/auth/api-auth'
 
 export async function POST(
   req: NextRequest,
@@ -8,12 +9,15 @@ export async function POST(
 ) {
   const { caseId } = await params
   try {
+    const authUser = await getApiUser(req)
+    if (!authUser) return unauthorized()
+
     const {
       reason, narrative, meetingHeld, contactAttempts,
       exitDate, goalOutcomes, interview, toolkit, caseNote,
     } = await req.json()
 
-    const userId = 'system' // TODO: real auth
+    const userId = authUser.dbId
     const isInfoReferral = reason === 'referred_but_not_enrolled'
     const stablePlannedEnd = new Date(new Date(exitDate).getTime() + 30 * 24 * 60 * 60 * 1000)
       .toISOString().slice(0, 10)
