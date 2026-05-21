@@ -71,13 +71,47 @@ export async function GET(req: NextRequest) {
       SELECT
         TO_CHAR(exit_date, 'Mon') AS month,
         EXTRACT(MONTH FROM exit_date)::int AS month_num,
-        COUNT(*) FILTER (WHERE exit_reason = 'reached_goals')      AS reached_goals,
-        COUNT(*) FILTER (WHERE exit_reason = 'stopped_responding') AS stopped_responding,
-        COUNT(*) FILTER (WHERE exit_reason = 'requested_exit')     AS requested_exit
+        COUNT(*) FILTER (WHERE exit_reason = 'reached_goals')             AS reached_goals,
+        COUNT(*) FILTER (WHERE exit_reason = 'stopped_responding')        AS stopped_responding,
+        COUNT(*) FILTER (WHERE exit_reason = 'requested_exit')            AS requested_exit,
+        COUNT(*) FILTER (WHERE exit_reason = 'change_in_goals')           AS change_in_goals,
+        COUNT(*) FILTER (WHERE exit_reason = 'referred_but_not_enrolled') AS referred_but_not_enrolled
       FROM cases
       WHERE exit_date BETWEEN ${start} AND ${end}
       GROUP BY month, month_num
       ORDER BY month_num
+    `
+
+    // ── Exit reason totals (for the dashboard pie chart) ──────────────
+    const exitReasonRows = await sql`
+      SELECT exit_reason, COUNT(*) AS count
+      FROM cases
+      WHERE exit_date BETWEEN ${start} AND ${end}
+        AND exit_reason IS NOT NULL
+      GROUP BY exit_reason
+    `
+    const REASON_LABEL_MAP: Record<string, { name: string; color: string }> = {
+      reached_goals:             { name: 'Reached Goals',          color: '#10b981' },
+      stopped_responding:        { name: 'Stopped Responding',     color: '#f59e0b' },
+      requested_exit:            { name: 'Requested Exit',         color: '#94a3b8' },
+      change_in_goals:           { name: 'Change in Goals',        color: '#3b82f6' },
+      referred_but_not_enrolled: { name: 'Referred — Not Enrolled', color: '#8b5cf6' },
+    }
+    const exitReasons = exitReasonRows.map((r: any) => ({
+      name:  REASON_LABEL_MAP[r.exit_reason]?.name  ?? r.exit_reason,
+      value: Number(r.count),
+      color: REASON_LABEL_MAP[r.exit_reason]?.color ?? '#94a3b8',
+    }))
+
+    // ── Exit narratives breakdown (canonical 11-phrase outcomes) ──────
+    const exitNarratives = await sql`
+      SELECT exit_narrative AS narrative, COUNT(*) AS count
+      FROM cases
+      WHERE exit_date BETWEEN ${start} AND ${end}
+        AND exit_narrative IS NOT NULL
+        AND exit_narrative <> ''
+      GROUP BY exit_narrative
+      ORDER BY count DESC
     `
 
     // ── Barriers frequency ───────────────────────────────────────────
@@ -194,6 +228,8 @@ export async function GET(req: NextRequest) {
         unduplicated:  Number(unduplicated?.count ?? 0),
       },
       exitsByMonth,
+      exitReasons,
+      exitNarratives,
       topBarriers,
       scoreDist,
       demographics: { schoolDist, gradeDist, referralSources },

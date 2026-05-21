@@ -44,6 +44,7 @@ export function StableCaseCard({ stableCase: sc, onUpdated }: Props) {
     reached_goals:      'bg-emerald-50 text-emerald-700 border border-emerald-200',
     stopped_responding: 'bg-slate-100 text-slate-600',
     requested_exit:     'bg-blue-50 text-blue-700 border border-blue-200',
+    change_in_goals:    'bg-indigo-50 text-indigo-700 border border-indigo-200',
   }[sc.exitReason]
 
   const urgencyBar = isClosed

@@ -7,6 +7,7 @@ import type { ExitReason } from './types'
 interface StepFinalizeProps {
   exitDate:        string
   reason:          ExitReason | null
+  narrative:       string
   participantName: string
   advocateName:    string
   submitting:      boolean
@@ -14,10 +15,12 @@ interface StepFinalizeProps {
   onSubmit:        () => void
 }
 
-const OUTCOME_LABELS: Record<ExitReason, string> = {
-  reached_goals:     'Reached goals',
-  stopped_responding:'Stopped responding',
-  requested_exit:    'Requested exit',
+const REASON_LABELS: Record<ExitReason, string> = {
+  reached_goals:             'Reached goals',
+  stopped_responding:        'Stopped responding',
+  requested_exit:            'Requested exit',
+  change_in_goals:           'Change in goals',
+  referred_but_not_enrolled: 'Referred — not enrolled',
 }
 
 interface CheckItem {
@@ -29,7 +32,7 @@ interface CheckItem {
 }
 
 export function StepFinalize({
-  exitDate, reason, participantName, advocateName, submitting, onBack, onSubmit,
+  exitDate, reason, narrative, participantName, advocateName, submitting, onBack, onSubmit,
 }: StepFinalizeProps) {
   const stableEndDate = exitDate
     ? formatDate(new Date(new Date(exitDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString())
@@ -55,7 +58,7 @@ export function StepFinalize({
     {
       id: 'end_service',
       label: 'End "Education Advocacy" service',
-      detail: `Outcome: "${reason ? OUTCOME_LABELS[reason] : '—'}" — expand on this in the narrative.`,
+      detail: `Outcome: "${narrative || (reason ? REASON_LABELS[reason] : '—')}"`,
       auto: true,
     },
     {
@@ -117,10 +120,15 @@ export function StepFinalize({
           <div>
             <p className="text-sm font-bold text-teal-800">{participantName}</p>
             <p className="text-xs text-teal-700 mt-0.5">
-              Exiting: <strong>{reason ? OUTCOME_LABELS[reason] : '—'}</strong> ·
+              Reason: <strong>{reason ? REASON_LABELS[reason] : '—'}</strong> ·
               Exit date: <strong>{exitDate ? formatDate(exitDate) : '—'}</strong> ·
               Stable service through: <strong>{stableEndDate}</strong>
             </p>
+            {narrative && (
+              <p className="text-xs text-teal-700 mt-1 italic">
+                Narrative: "{narrative}"
+              </p>
+            )}
           </div>
         </div>
       </div>

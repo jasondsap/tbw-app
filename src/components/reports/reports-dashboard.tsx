@@ -249,9 +249,11 @@ const FALLBACK_EXITS = Array.from({ length: 12 }, (_, i) => ({
   reachedGoals: 0, stoppedResponding: 0, requestedExit: 0,
 }))
 const FALLBACK_EXIT_REASONS = [
-  { name: 'Reached Goals',      value: 0, color: '#0d9488' },
-  { name: 'Stopped Responding', value: 0, color: '#94a3b8' },
-  { name: 'Requested Exit',     value: 0, color: '#3b82f6' },
+  { name: 'Reached Goals',           value: 0, color: '#10b981' },
+  { name: 'Stopped Responding',      value: 0, color: '#f59e0b' },
+  { name: 'Requested Exit',          value: 0, color: '#94a3b8' },
+  { name: 'Change in Goals',         value: 0, color: '#3b82f6' },
+  { name: 'Referred — Not Enrolled', value: 0, color: '#8b5cf6' },
 ]
 
 // ── Main dashboard ─────────────────────────────────────────────────────────────
@@ -273,6 +275,7 @@ export function ReportsDashboard() {
   const kpi = apiData?.kpi ?? { learnersServed: 0, goalsReached: 0, totalExited: 0, avgDaysInService: 0, goalCompletionRate: 0, stableRate: 0 }
   const exitsByMonth    = apiData?.exitsByMonth        ?? FALLBACK_EXITS
   const exitReasons     = apiData?.exitReasons         ?? FALLBACK_EXIT_REASONS
+  const exitNarratives  = apiData?.exitNarratives      ?? []
   const topBarriers     = apiData?.topBarriers         ?? []
   const scoreDist       = apiData?.scoreDist           ?? []
   const schoolDist      = apiData?.demographics?.schoolDist    ?? []
@@ -461,6 +464,32 @@ export function ReportsDashboard() {
             <SectionTitle>Top Barriers at Enrollment</SectionTitle>
             <div className="card">
               <BarriersChart data={topBarriers} />
+            </div>
+          </div>
+
+          {/* Service exit narratives — canonical funder-reporting phrases */}
+          <div>
+            <SectionTitle>Service Exit Narratives</SectionTitle>
+            <div className="card">
+              {exitNarratives.length === 0 ? (
+                <p className="text-xs text-slate-400 italic py-3 text-center">
+                  No exit narratives recorded in this period yet.
+                </p>
+              ) : (
+                <div className="divide-y divide-slate-50">
+                  {exitNarratives.map((n: any) => {
+                    const total = exitNarratives.reduce((s: number, x: any) => s + Number(x.count), 0)
+                    const pct = total > 0 ? Math.round((Number(n.count) / total) * 100) : 0
+                    return (
+                      <div key={n.narrative} className="flex items-center justify-between py-2 text-xs">
+                        <span className="text-slate-600 flex-1 pr-4">{n.narrative}</span>
+                        <span className="font-bold text-slate-700 tabular-nums w-8 text-right">{n.count}</span>
+                        <span className="text-slate-400 tabular-nums w-12 text-right">({pct}%)</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { reason, participantName, goalOutcomes, interview } = await req.json()
+    const { reason, narrative, participantName, goalOutcomes, interview } = await req.json()
 
     const goalsReached   = goalOutcomes?.filter((g: any) => g.reached === true)  ?? []
     const goalsNotReached = goalOutcomes?.filter((g: any) => g.reached === false) ?? []
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const prompt = `You are a trauma-informed education advocate writing a strengths-based exit case note for a case management platform.
 
 Participant: ${participantName}
-Exit reason: ${reason === 'reached_goals' ? 'Reached goals' : reason === 'stopped_responding' ? 'Stopped responding after 6+ contact attempts over 2 months' : 'Requested exit'}
+Exit reason: ${reason === 'reached_goals' ? 'Reached goals' : reason === 'stopped_responding' ? 'Stopped responding after 6+ contact attempts over 2 months' : reason === 'requested_exit' ? 'Requested exit' : reason === 'change_in_goals' ? 'Change in goals' : reason === 'referred_but_not_enrolled' ? 'Referred but not formally enrolled' : 'Other'}${narrative ? `\nService exit narrative (canonical phrase for funder reports): ${narrative}` : ''}
 
 Goals reached (${goalsReached.length}):
 ${goalsReached.map((g: any) => `- ${g.goalText}${g.comments ? ` (${g.comments})` : ''}`).join('\n') || '(none)'}

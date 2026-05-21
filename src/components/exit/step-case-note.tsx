@@ -7,6 +7,7 @@ import type { ExitReason, ExitInterviewData, GoalOutcome } from './types'
 interface StepCaseNoteProps {
   caseNote:    string
   reason:      ExitReason | null
+  narrative:   string
   participantName: string
   goalOutcomes:   GoalOutcome[]
   interview:   ExitInterviewData
@@ -15,14 +16,8 @@ interface StepCaseNoteProps {
   onNext:      () => void
 }
 
-const OUTCOME_LABELS: Record<ExitReason, string> = {
-  reached_goals:     'Reached goals',
-  stopped_responding:'Stopped responding',
-  requested_exit:    'Requested exit',
-}
-
 export function StepCaseNote({
-  caseNote, reason, participantName, goalOutcomes, interview, onUpdate, onBack, onNext
+  caseNote, reason, narrative, participantName, goalOutcomes, interview, onUpdate, onBack, onNext
 }: StepCaseNoteProps) {
   const [drafting, setDrafting] = useState(false)
 
@@ -32,7 +27,7 @@ export function StepCaseNote({
       const res = await fetch('/api/ai/draft-exit-note', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason, participantName, goalOutcomes, interview }),
+        body: JSON.stringify({ reason, narrative, participantName, goalOutcomes, interview }),
       })
       const data = await res.json()
       onUpdate(data.note ?? '')
@@ -53,11 +48,11 @@ export function StepCaseNote({
       </div>
 
       {/* Outcome label reminder */}
-      {reason && (
+      {narrative && (
         <div className="card p-4 flex items-center gap-3">
           <div className="w-2 h-2 rounded-full bg-teal-500 flex-shrink-0" />
           <p className="text-sm text-slate-700">
-            Service outcome will be recorded as: <strong className="text-teal-700">{OUTCOME_LABELS[reason]}</strong>
+            Service outcome will be recorded as: <strong className="text-teal-700">{narrative}</strong>
           </p>
         </div>
       )}

@@ -3,6 +3,18 @@
 -- Run AFTER schema.sql + all migration files
 -- ============================================================
 
+-- ── Migrations (run once, idempotent) ────────────────────────
+-- Service exit narrative (canonical 11-phrase outcome from Casebook Process.pdf).
+-- Stored as TEXT so "Other" free-text exits are valid too. Mirrors services.outcome
+-- at the case level for funder reporting.
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS exit_narrative TEXT;
+
+-- Info & Referral terminal status. case_status is a USER-DEFINED enum in Neon,
+-- so the new value has to be added to the type (a TEXT column wouldn't need this).
+-- ALTER TYPE ... ADD VALUE must run outside a transaction block — execute this
+-- as its own statement in the Neon SQL editor.
+ALTER TYPE case_status ADD VALUE IF NOT EXISTS 'info_referral_closed';
+
 -- ── Users (staff) ────────────────────────────────────────────
 INSERT INTO users (id, cognito_sub, first_name, last_name, email, role, phone, is_active, created_at)
 VALUES

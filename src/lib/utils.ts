@@ -49,6 +49,7 @@ export function statusLabel(status: CaseStatus): string {
     active:            'Active',
     stable:            'Stable',
     closed:            'Closed',
+    info_referral_closed: 'Info & Referral — Closed',
   }
   return labels[status] ?? status
 }
@@ -63,6 +64,7 @@ export function statusColor(status: CaseStatus): string {
     active:            'bg-emerald-50 text-emerald-700',
     stable:            'bg-sky-50 text-sky-700',
     closed:            'bg-slate-100 text-slate-500',
+    info_referral_closed: 'bg-violet-50 text-violet-700',
   }
   return colors[status] ?? 'bg-slate-100 text-slate-600'
 }
@@ -77,6 +79,7 @@ export function statusDot(status: CaseStatus): string {
     active:            'bg-emerald-500',
     stable:            'bg-sky-500',
     closed:            'bg-slate-300',
+    info_referral_closed: 'bg-violet-500',
   }
   return dots[status] ?? 'bg-slate-400'
 }

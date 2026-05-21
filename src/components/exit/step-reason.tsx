@@ -1,16 +1,18 @@
 'use client'
-import { useState } from 'react'
-import { CheckCircle2, UserX, LogOut, Plus, Trash2, Phone, MessageSquare, PhoneCall } from 'lucide-react'
+import { CheckCircle2, UserX, LogOut, Plus, Trash2, Phone, MessageSquare, PhoneCall, Shuffle, MailQuestion } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ExitReason, MeetingHeld, ContactAttempt } from './types'
+import { SERVICE_EXIT_NARRATIVES, NARRATIVE_SUGGESTIONS } from './types'
 
 interface StepReasonProps {
   reason:          ExitReason | null
+  narrative:       string
   meetingHeld:     MeetingHeld | null
   contactAttempts: ContactAttempt[]
   onUpdate: (fields: {
-    reason?: ExitReason
-    meetingHeld?: MeetingHeld
+    reason?:          ExitReason
+    narrative?:       string
+    meetingHeld?:     MeetingHeld
     contactAttempts?: ContactAttempt[]
   }) => void
   onNext: () => void
@@ -38,6 +40,20 @@ const REASONS: { value: ExitReason; label: string; desc: string; icon: React.Ele
     icon: LogOut,
     color: 'border-slate-300 bg-slate-50 text-slate-600',
   },
+  {
+    value: 'change_in_goals',
+    label: 'Change in Goals',
+    desc: 'Learner is shifting to a different service or path.',
+    icon: Shuffle,
+    color: 'border-blue-300 bg-blue-50 text-blue-700',
+  },
+  {
+    value: 'referred_but_not_enrolled',
+    label: 'Referred — Not Enrolled',
+    desc: 'Info & referral only; learner never formally enrolled.',
+    icon: MailQuestion,
+    color: 'border-violet-300 bg-violet-50 text-violet-700',
+  },
 ]
 
 const METHOD_OPTIONS: { value: ContactAttempt['method']; label: string; icon: React.ElementType }[] = [
@@ -46,7 +62,9 @@ const METHOD_OPTIONS: { value: ContactAttempt['method']; label: string; icon: Re
   { value: 'voicemail',  label: 'Voicemail',  icon: PhoneCall },
 ]
 
-export function StepReason({ reason, meetingHeld, contactAttempts, onUpdate, onNext }: StepReasonProps) {
+const OTHER_NARRATIVE = '__other__'
+
+export function StepReason({ reason, narrative, meetingHeld, contactAttempts, onUpdate, onNext }: StepReasonProps) {
   const addAttempt = () => onUpdate({
     contactAttempts: [...contactAttempts, { date: '', method: 'text', notes: '' }]
   })
@@ -60,10 +78,27 @@ export function StepReason({ reason, meetingHeld, contactAttempts, onUpdate, onN
     contactAttempts: contactAttempts.filter((_, idx) => idx !== i)
   })
 
-  const canProceed =
-    reason === 'reached_goals'     ? meetingHeld !== null :
-    reason === 'stopped_responding' ? contactAttempts.length >= 1 :
-    reason !== null
+  // When the user changes the short reason, auto-fill the most-likely narrative
+  // (first suggestion) so the dropdown is never empty. They can still change it.
+  const handleReasonChange = (newReason: ExitReason) => {
+    const suggested = NARRATIVE_SUGGESTIONS[newReason]?.[0] ?? ''
+    onUpdate({ reason: newReason, narrative: suggested })
+  }
+
+  const isCanonical = SERVICE_EXIT_NARRATIVES.includes(narrative as any)
+  const isOther = narrative !== '' && !isCanonical
+  const dropdownValue = narrative === '' ? '' : isCanonical ? narrative : OTHER_NARRATIVE
+
+  const suggestions = reason ? NARRATIVE_SUGGESTIONS[reason] : []
+  const otherNarratives = SERVICE_EXIT_NARRATIVES.filter(n => !suggestions.includes(n))
+
+  const canProceed = (() => {
+    if (!reason) return false
+    if (narrative.trim() === '') return false
+    if (reason === 'reached_goals')      return meetingHeld !== null
+    if (reason === 'stopped_responding') return contactAttempts.length >= 1
+    return true
+  })()
 
   return (
     <div className="space-y-6">
@@ -72,26 +107,74 @@ export function StepReason({ reason, meetingHeld, contactAttempts, onUpdate, onN
         <p className="text-sm text-slate-500 mt-1">This determines which steps and outcome codes are used.</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {REASONS.map(r => {
           const Icon = r.icon
           const selected = reason === r.value
           return (
             <button
               key={r.value}
-              onClick={() => onUpdate({ reason: r.value })}
+              onClick={() => handleReasonChange(r.value)}
               className={cn(
-                'p-5 rounded-xl border-2 text-left transition-all',
+                'p-4 rounded-xl border-2 text-left transition-all',
                 selected ? r.color + ' ring-2 ring-offset-1 ring-current' : 'border-slate-200 hover:border-slate-300 bg-white'
               )}
             >
-              <Icon size={22} className="mb-3" />
+              <Icon size={20} className="mb-2" />
               <p className="font-semibold text-sm">{r.label}</p>
               <p className="text-xs opacity-70 mt-1 leading-relaxed">{r.desc}</p>
             </button>
           )
         })}
       </div>
+
+      {/* Service exit narrative — the 11 canonical phrases + Other */}
+      {reason && (
+        <div className="card p-5 space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-700">Service exit narrative</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Picked from the canonical phrases used in funder/grant reports. Choose "Other" for an unusual case.
+            </p>
+          </div>
+          <select
+            value={dropdownValue}
+            onChange={e => {
+              const v = e.target.value
+              if (v === OTHER_NARRATIVE) {
+                // Switching to Other — clear the canonical value so the textarea is empty
+                onUpdate({ narrative: '' })
+              } else {
+                onUpdate({ narrative: v })
+              }
+            }}
+            className="form-input text-sm"
+          >
+            <option value="" disabled>Choose a narrative…</option>
+            {suggestions.length > 0 && (
+              <optgroup label="Suggested for this reason">
+                {suggestions.map(n => <option key={n} value={n}>{n}</option>)}
+              </optgroup>
+            )}
+            {otherNarratives.length > 0 && (
+              <optgroup label="All canonical narratives">
+                {otherNarratives.map(n => <option key={n} value={n}>{n}</option>)}
+              </optgroup>
+            )}
+            <option value={OTHER_NARRATIVE}>Other — write your own…</option>
+          </select>
+
+          {(isOther || dropdownValue === OTHER_NARRATIVE) && (
+            <textarea
+              value={narrative}
+              onChange={e => onUpdate({ narrative: e.target.value })}
+              placeholder="Describe the exit narrative in your own words. This will appear on grant/funder reports — keep it short and observable."
+              rows={3}
+              className="form-input text-sm"
+            />
+          )}
+        </div>
+      )}
 
       {/* Meeting held? — only for reached_goals */}
       {reason === 'reached_goals' && (

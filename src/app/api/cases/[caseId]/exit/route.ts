@@ -9,11 +9,12 @@ export async function POST(
   const { caseId } = await params
   try {
     const {
-      reason, meetingHeld, contactAttempts,
+      reason, narrative, meetingHeld, contactAttempts,
       exitDate, goalOutcomes, interview, toolkit, caseNote,
     } = await req.json()
 
     const userId = 'system' // TODO: real auth
+    const isInfoReferral = reason === 'referred_but_not_enrolled'
     const stablePlannedEnd = new Date(new Date(exitDate).getTime() + 30 * 24 * 60 * 60 * 1000)
       .toISOString().slice(0, 10)
 
@@ -43,10 +44,16 @@ export async function POST(
     `
 
     // 3. End Education Advocacy service
-    const outcomeLabel =
-      reason === 'reached_goals'      ? 'Reached goals' :
-      reason === 'stopped_responding' ? 'Stopped responding' :
-      'Requested exit'
+    // Prefer the canonical narrative chosen by the advocate; fall back to the
+    // short reason label if (somehow) the narrative was left blank.
+    const reasonLabel =
+      reason === 'reached_goals'             ? 'Reached goals' :
+      reason === 'stopped_responding'        ? 'Stopped responding' :
+      reason === 'requested_exit'            ? 'Requested exit' :
+      reason === 'change_in_goals'           ? 'Change in goals' :
+      reason === 'referred_but_not_enrolled' ? 'Referred — not enrolled' :
+      'Other'
+    const outcomeLabel = (narrative && narrative.trim()) || reasonLabel
 
     await sql`
       UPDATE services
@@ -60,27 +67,30 @@ export async function POST(
         AND status       = 'active'
     `
 
-    // 4. Start Stable service
-    await sql`
-      INSERT INTO services (
-        case_id, service_type, status,
-        start_date, planned_end_date, created_at
-      ) VALUES (
-        ${caseId}, 'stable', 'active',
-        ${exitDate}, ${stablePlannedEnd}, NOW()
-      )
-    `
-
-    // 5. Reassign to Data Specialist
-    const dataSpecialists = await sql`
-      SELECT id FROM users WHERE user_role = 'data_analyst' LIMIT 1
-    `
-    const dataSpecialistId = dataSpecialists[0]?.id ?? null
-    if (dataSpecialistId) {
+    // 4. Start Stable service — skip for info-and-referral closures since the
+    //    learner never enrolled and there are no JCPS records to pull.
+    if (!isInfoReferral) {
       await sql`
-        UPDATE cases SET advocate_id = ${dataSpecialistId}, updated_at = NOW()
-        WHERE id = ${caseId}
+        INSERT INTO services (
+          case_id, service_type, status,
+          start_date, planned_end_date, created_at
+        ) VALUES (
+          ${caseId}, 'stable', 'active',
+          ${exitDate}, ${stablePlannedEnd}, NOW()
+        )
       `
+
+      // 5. Reassign to Data Specialist
+      const dataSpecialists = await sql`
+        SELECT id FROM users WHERE user_role = 'data_analyst' LIMIT 1
+      `
+      const dataSpecialistId = dataSpecialists[0]?.id ?? null
+      if (dataSpecialistId) {
+        await sql`
+          UPDATE cases SET advocate_id = ${dataSpecialistId}, updated_at = NOW()
+          WHERE id = ${caseId}
+        `
+      }
     }
 
     // 6. Save exit interview
@@ -124,11 +134,30 @@ export async function POST(
     }
 
     // 8. Update case exit fields
-    await sql`
-      UPDATE cases
-      SET exit_reason = ${reason}, exit_date = ${exitDate}, updated_at = NOW()
-      WHERE id = ${caseId}
-    `
+    // - Persist the canonical narrative for funder reporting.
+    // - For info-and-referral closures, jump straight to the terminal status
+    //   (no Stable phase). Other exits stay 'active' so Stable can run for 30
+    //   days before the case is finally closed.
+    if (isInfoReferral) {
+      await sql`
+        UPDATE cases
+        SET exit_reason    = ${reason},
+            exit_narrative = ${outcomeLabel},
+            exit_date      = ${exitDate},
+            status         = 'info_referral_closed',
+            updated_at     = NOW()
+        WHERE id = ${caseId}
+      `
+    } else {
+      await sql`
+        UPDATE cases
+        SET exit_reason    = ${reason},
+            exit_narrative = ${outcomeLabel},
+            exit_date      = ${exitDate},
+            updated_at     = NOW()
+        WHERE id = ${caseId}
+      `
+    }
 
     // Audit log
     await writeAuditLog({
@@ -136,11 +165,14 @@ export async function POST(
       action:       'exit',
       resourceType: 'case',
       resourceId:   caseId,
-      newValues:    { reason, exitDate, stablePlannedEnd },
+      newValues:    { reason, narrative: outcomeLabel, exitDate, stablePlannedEnd: isInfoReferral ? null : stablePlannedEnd },
       ipAddress:    req.headers.get('x-forwarded-for') ?? undefined,
     })
 
-    return NextResponse.json({ success: true, stablePlannedEnd })
+    return NextResponse.json({
+      success: true,
+      stablePlannedEnd: isInfoReferral ? null : stablePlannedEnd,
+    })
   } catch (err) {
     console.error('Exit error:', err)
     return NextResponse.json({ error: 'Failed to finalize exit' }, { status: 500 })

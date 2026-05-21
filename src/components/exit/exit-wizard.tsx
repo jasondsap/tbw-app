@@ -35,7 +35,8 @@ function getSteps(reason: ExitReason | null, meetingHeld: MeetingHeld | null): n
   if (reason === 'reached_goals' && meetingHeld === 'yes') return [1, 2, 3, 4, 5, 6]
   if (reason === 'reached_goals' && meetingHeld !== null)  return [1, 4, 5, 6]   // no meeting — skip interview+toolkit
   if (reason === 'reached_goals')                          return [1, 2, 3, 4, 5, 6] // not yet decided
-  return [1, 4, 5, 6]   // stopped_responding / requested_exit
+  if (reason === 'referred_but_not_enrolled')              return [1, 5, 6]        // no goals/interview to review
+  return [1, 4, 5, 6]   // stopped_responding / requested_exit / change_in_goals
 }
 
 function StepBar({ steps, currentStep }: { steps: number[]; currentStep: number }) {
@@ -86,6 +87,7 @@ export function ExitWizard({
   const [state, setState] = useState<ExitWizardState>({
     step:            1,
     reason:          null,
+    narrative:       '',
     meetingHeld:     null,
     contactAttempts: [],
     interview: {
@@ -149,6 +151,7 @@ export function ExitWizard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           reason:          state.reason,
+          narrative:       state.narrative,
           meetingHeld:     state.meetingHeld,
           contactAttempts: state.contactAttempts,
           exitDate:        state.exitDate,
@@ -189,6 +192,7 @@ export function ExitWizard({
       {state.step === 1 && (
         <StepReason
           reason={state.reason}
+          narrative={state.narrative}
           meetingHeld={state.meetingHeld}
           contactAttempts={state.contactAttempts}
           onUpdate={fields => update(fields as Partial<ExitWizardState>)}
@@ -231,6 +235,7 @@ export function ExitWizard({
         <StepCaseNote
           caseNote={state.caseNote}
           reason={state.reason}
+          narrative={state.narrative}
           participantName={participantName}
           goalOutcomes={state.interview.goalOutcomes}
           interview={state.interview}
@@ -244,6 +249,7 @@ export function ExitWizard({
         <StepFinalize
           exitDate={state.exitDate}
           reason={state.reason}
+          narrative={state.narrative}
           participantName={participantName}
           advocateName={advocateName}
           submitting={state.submitting}

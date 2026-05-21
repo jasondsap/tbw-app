@@ -19,6 +19,7 @@ export type CaseStatus =
   | 'active'
   | 'stable'
   | 'closed'
+  | 'info_referral_closed'
 
 export type ParticipantRole = 'learner' | 'caregiver' | 'partner' | 'other'
 
@@ -41,7 +42,28 @@ export type ExitReason =
   | 'reached_goals'
   | 'stopped_responding'
   | 'requested_exit'
+  | 'change_in_goals'
+  | 'referred_but_not_enrolled'
   | 'other'
+
+// Canonical 11-phrase service exit narrative from Casebook Process.pdf /
+// Education Advocacy Processes.docx. Stored as plain text in cases.exit_narrative
+// and services.outcome so "Other" free text remains supported.
+export const SERVICE_EXIT_NARRATIVES = [
+  'Re-enrolled in school.',
+  'Learning online with additional supports.',
+  'Returned to school post-suspension.',
+  'Returned to school with a safety plan.',
+  'Returned to out-of-county school.',
+  'Returned to school with a plan for additional in-school supports.',
+  'Returned to school after receiving additional out-of-school supports.',
+  'Returned to school with a plan for transportation.',
+  'Enrolled in ongoing education advocacy services to reach goals.',
+  'Exited without re-enrolling in school or unknown departure.',
+  'Referred but not enrolled.',
+] as const
+
+export type ServiceExitNarrative = (typeof SERVICE_EXIT_NARRATIVES)[number]
 
 export type ConsentFormType =
   | 'tbw_participation'
@@ -111,6 +133,7 @@ export interface Case {
   currentEdStatus?: string
   checkinFrequency?: string
   exitReason?: ExitReason
+  exitNarrative?: string
   // Joined fields
   firstName?: string
   lastName?: string

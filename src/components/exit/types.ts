@@ -1,7 +1,58 @@
 // Exit wizard shared types
 
-export type ExitReason = 'reached_goals' | 'stopped_responding' | 'requested_exit'
+export type ExitReason =
+  | 'reached_goals'
+  | 'stopped_responding'
+  | 'requested_exit'
+  | 'change_in_goals'
+  | 'referred_but_not_enrolled'
 export type MeetingHeld = 'yes' | 'no'
+
+// Canonical 11-phrase service exit narrative (Casebook Process.pdf).
+// Kept as a string column so "Other" free text is also valid.
+export const SERVICE_EXIT_NARRATIVES = [
+  'Re-enrolled in school.',
+  'Learning online with additional supports.',
+  'Returned to school post-suspension.',
+  'Returned to school with a safety plan.',
+  'Returned to out-of-county school.',
+  'Returned to school with a plan for additional in-school supports.',
+  'Returned to school after receiving additional out-of-school supports.',
+  'Returned to school with a plan for transportation.',
+  'Enrolled in ongoing education advocacy services to reach goals.',
+  'Exited without re-enrolling in school or unknown departure.',
+  'Referred but not enrolled.',
+] as const
+
+export type ServiceExitNarrative = (typeof SERVICE_EXIT_NARRATIVES)[number]
+
+// Suggested narratives per short reason — UI pre-selects/sorts by these.
+export const NARRATIVE_SUGGESTIONS: Record<ExitReason, ServiceExitNarrative[]> = {
+  reached_goals: [
+    'Re-enrolled in school.',
+    'Returned to school post-suspension.',
+    'Returned to school with a safety plan.',
+    'Returned to school with a plan for additional in-school supports.',
+    'Returned to school after receiving additional out-of-school supports.',
+    'Returned to school with a plan for transportation.',
+    'Returned to out-of-county school.',
+    'Learning online with additional supports.',
+    'Enrolled in ongoing education advocacy services to reach goals.',
+  ],
+  stopped_responding: [
+    'Exited without re-enrolling in school or unknown departure.',
+  ],
+  requested_exit: [
+    'Exited without re-enrolling in school or unknown departure.',
+    'Re-enrolled in school.',
+  ],
+  change_in_goals: [
+    'Enrolled in ongoing education advocacy services to reach goals.',
+  ],
+  referred_but_not_enrolled: [
+    'Referred but not enrolled.',
+  ],
+}
 
 export interface GoalOutcome {
   goalId:     string
@@ -67,6 +118,7 @@ export interface ToolkitData {
 export interface ExitWizardState {
   step:          number
   reason:        ExitReason | null
+  narrative:     string   // one of SERVICE_EXIT_NARRATIVES or free text via "Other"
   meetingHeld:   MeetingHeld | null
   contactAttempts: ContactAttempt[]  // for stopped_responding
   interview:     ExitInterviewData
@@ -119,9 +171,11 @@ export const COPING_SKILLS = [
 ]
 
 export const STEPS_FOR_REASON: Record<ExitReason, number[]> = {
-  reached_goals:     [1, 2, 3, 4, 5, 6], // reason, interview, toolkit, goals, note, finalize
-  stopped_responding:[1, 4, 5, 6],        // reason, goals, note, finalize
-  requested_exit:    [1, 4, 5, 6],        // reason, goals, note, finalize
+  reached_goals:             [1, 2, 3, 4, 5, 6], // reason, interview, toolkit, goals, note, finalize
+  stopped_responding:        [1, 4, 5, 6],        // reason, goals, note, finalize
+  requested_exit:            [1, 4, 5, 6],        // reason, goals, note, finalize
+  change_in_goals:           [1, 4, 5, 6],        // reason, goals, note, finalize
+  referred_but_not_enrolled: [1, 5, 6],            // reason, note, finalize — no goals/interview
 }
 
 export const STEP_LABELS = [

@@ -18,6 +18,12 @@ export interface AttendanceLog {
   referBackReason:   string
 }
 
+export type StableExitReason =
+  | 'reached_goals'
+  | 'stopped_responding'
+  | 'requested_exit'
+  | 'change_in_goals'
+
 export interface StableCase {
   id:              string
   caseNumber:      string
@@ -27,7 +33,8 @@ export interface StableCase {
   grade:           string
   exitDate:        string          // ISO date
   stableDueDate:   string          // exitDate + 30 days
-  exitReason:      'reached_goals' | 'stopped_responding' | 'requested_exit'
+  exitReason:      StableExitReason
+  exitNarrative:   string | null   // canonical 11-phrase outcome
   formerAdvocate:  string
   pullStatus:      AttendancePullStatus
   attendanceLogs:  AttendanceLog[]
@@ -53,10 +60,11 @@ export function getUrgency(stableDueDate: string): Urgency {
   return 'upcoming'
 }
 
-export const EXIT_REASON_LABELS: Record<StableCase['exitReason'], string> = {
+export const EXIT_REASON_LABELS: Record<StableExitReason, string> = {
   reached_goals:      'Reached Goals',
   stopped_responding: 'Stopped Responding',
   requested_exit:     'Requested Exit',
+  change_in_goals:    'Change in Goals',
 }
 
 // ── Mock data ────────────────────────────────────────────────────────────────
@@ -76,7 +84,7 @@ export const MOCK_STABLE_CASES: StableCase[] = [
     exitDate: daysAgo(34), stableDueDate: daysAfter(daysAgo(34), 30),
     exitReason: 'reached_goals',
     formerAdvocate: 'Emily R.',
-    pullStatus: 'not_started', attendanceLogs: [], closedAt: null, outcome: null,
+    exitNarrative: null, pullStatus: 'not_started', attendanceLogs: [], closedAt: null, outcome: null,
   },
   {
     id: 'sc2', caseNumber: 'TBW-2025-0021',
@@ -85,7 +93,7 @@ export const MOCK_STABLE_CASES: StableCase[] = [
     exitDate: daysAgo(26), stableDueDate: daysAfter(daysAgo(26), 30),
     exitReason: 'reached_goals',
     formerAdvocate: 'Darius M.',
-    pullStatus: 'requested', attendanceLogs: [], closedAt: null, outcome: null,
+    exitNarrative: null, pullStatus: 'requested', attendanceLogs: [], closedAt: null, outcome: null,
   },
   {
     id: 'sc3', caseNumber: 'TBW-2025-0009',
@@ -94,7 +102,7 @@ export const MOCK_STABLE_CASES: StableCase[] = [
     exitDate: daysAgo(28), stableDueDate: daysAfter(daysAgo(28), 30),
     exitReason: 'stopped_responding',
     formerAdvocate: 'Sam K.',
-    pullStatus: 'not_started', attendanceLogs: [], closedAt: null, outcome: null,
+    exitNarrative: null, pullStatus: 'not_started', attendanceLogs: [], closedAt: null, outcome: null,
   },
   {
     id: 'sc4', caseNumber: 'TBW-2025-0025',
@@ -103,7 +111,7 @@ export const MOCK_STABLE_CASES: StableCase[] = [
     exitDate: daysAgo(14), stableDueDate: daysAfter(daysAgo(14), 30),
     exitReason: 'reached_goals',
     formerAdvocate: 'Emily R.',
-    pullStatus: 'not_started', attendanceLogs: [], closedAt: null, outcome: null,
+    exitNarrative: null, pullStatus: 'not_started', attendanceLogs: [], closedAt: null, outcome: null,
   },
   {
     id: 'sc5', caseNumber: 'TBW-2025-0031',
@@ -112,7 +120,7 @@ export const MOCK_STABLE_CASES: StableCase[] = [
     exitDate: daysAgo(5), stableDueDate: daysAfter(daysAgo(5), 30),
     exitReason: 'requested_exit',
     formerAdvocate: 'Darius M.',
-    pullStatus: 'not_started', attendanceLogs: [], closedAt: null, outcome: null,
+    exitNarrative: null, pullStatus: 'not_started', attendanceLogs: [], closedAt: null, outcome: null,
   },
   // One already closed
   {
@@ -122,6 +130,7 @@ export const MOCK_STABLE_CASES: StableCase[] = [
     exitDate: daysAgo(42), stableDueDate: daysAfter(daysAgo(42), 30),
     exitReason: 'reached_goals',
     formerAdvocate: 'Sam K.',
+    exitNarrative: 'Re-enrolled in school.',
     pullStatus: 'received',
     attendanceLogs: [{
       id: 'al1', loggedAt: daysAgo(8) + 'T14:30:00Z', loggedBy: 'Jess',
