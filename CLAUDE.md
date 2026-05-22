@@ -6,6 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Case management web app for The Book Works education advocacy team (Louisville nonprofit). Tracks learners (participants) through a referral → intake → consent → assignment → active → exit pipeline, with AI-assisted goal generation and case note drafting. **Production target is AWS Amplify under a HIPAA BAA** — treat participant data as PHI.
 
+### What landed recently (read this before assuming the state of any feature)
+
+- **In-app consent signing** (vertical slice) — TBW Consent to Participate is now collected via a custom mobile-first signing flow with SMS + email delivery (Twilio + Resend). PDFs are generated with jsPDF, hashed (sha256), and stored in S3 with signer IP + user-agent. Four other forms still show "Paper for now" — adding them is JSON-only, no schema changes. Full details under [Consent administration](#consent-administration-in-app-signing).
+- **Service exit narratives** — exit wizard now records the 11-phrase canonical outcome from the docs (`cases.exit_narrative`) plus the five short reason values. Reports dashboard surfaces a "Service Exit Narratives" breakdown.
+- **`info_referral_closed` terminal case status** — for I&R-only closures (`referred_but_not_enrolled` exit reason); those cases skip the Stable phase.
+- **Auth fixes across mutation routes** — every API route that writes a `created_by`/`author_id`/etc. now uses `getApiUser(req).dbId` instead of the string literal `'system'` (which was failing UUID parse). This was a single recurring bug across `intake/referral`, `case-notes`, `goals`, `cases/[caseId]/{assign,exit,enrollment,involvement-score}`, `stable/[stableId]/log`, `goals/[goalId]`. Server-side role enforcement is **not** yet added — see gap #9.
+
 ## Commands
 
 ```bash
@@ -24,7 +31,8 @@ There is no test suite. There is no DB migration tool — `src/lib/db/seed.sql` 
 - AWS Cognito (Hosted UI, authorization code flow) — JWT verified locally with `jose`
 - Tailwind 3, lucide-react icons, recharts
 - Anthropic SDK for AI features
-- AWS S3 (document storage), AWS SES + Resend (email), Dropbox Sign (e-signatures)
+- AWS S3 (document storage), Resend (email), Twilio (SMS), jsPDF (PDF generation)
+- Dropbox Sign is still installed but is being replaced by in-app consent signing — see [Consent administration](#consent-administration-in-app-signing)
 
 ## Architecture
 
@@ -43,8 +51,9 @@ The Cognito custom claim `custom:db_user_id` short-circuits the DB lookup when p
 ### Routes & layout
 
 - `src/app/(dashboard)/layout.tsx` is `force-dynamic` and calls `getSession()` — every page under it is authed and renders the `Sidebar`. Add new internal pages inside this route group.
-- `src/app/(dashboard)/` contains feature pages: `intake/`, `cases/[caseId]/`, `goals/`, `sites/`, `reports/`, `dashboard/`, `coordinator/`, `stable/`.
-- `src/app/api/` mirrors the feature surface. Per-case mutations live under `api/cases/[caseId]/{assign,documents,enrollment,exit,involvement-score,signature-request}`. AI endpoints under `api/ai/`. The Dropbox Sign callback lives at `api/webhooks/dropbox-sign`.
+- `src/app/(dashboard)/` contains feature pages: `intake/`, `cases/[caseId]/`, `goals/`, `sites/`, `reports/`, `dashboard/`, `coordinator/`, `stable/`. Per-case sub-pages live at `cases/[caseId]/{enrollment,exit,consent/[type]}`.
+- `src/app/consent/sign/[type]/` is **outside** the (dashboard) group and **outside the auth wall** — it's the public tokenized signing route used by participants/guardians who don't have Cognito accounts. The middleware allowlists `/consent/sign` and `/api/consents/sign` for this.
+- `src/app/api/` mirrors the feature surface. Per-case mutations live under `api/cases/[caseId]/{assign,documents,enrollment,exit,involvement-score,signature-request,consent}`. Consent infrastructure: `api/consents/{invite,sign,[signatureId]/pdf}`. AI endpoints under `api/ai/`. The Dropbox Sign callback at `api/webhooks/dropbox-sign` is legacy.
 - `next.config.ts` redirects `/` → `/dashboard` and marks `@neondatabase/serverless` as an external server package.
 
 ### Data layer
@@ -57,9 +66,29 @@ The DB schema itself is not in the repo — it lives in Neon (originally seeded 
 
 ### External services
 
-- **S3** (`src/lib/storage/s3.ts`) — browser uploads go direct to S3 via presigned PUT URLs (`getPresignedUploadUrl`). Downloads use presigned GETs with `Content-Disposition: attachment`. Bucket env var is `APP_AWS_S3_BUCKET`; AWS creds are prefixed `APP_AWS_*` (not the reserved `AWS_*`, which Amplify/Vercel set themselves).
-- **Dropbox Sign** (`src/lib/esign/dropbox-sign.ts`) — consent forms are sent from templates keyed in `TEMPLATES`. Webhook at `/api/webhooks/dropbox-sign` updates `consents` rows when a request is signed.
+- **S3** (`src/lib/storage/s3.ts`) — browser uploads go direct to S3 via presigned PUT URLs (`getPresignedUploadUrl`). Downloads use presigned GETs with `Content-Disposition: attachment`. Bucket env var is `APP_AWS_S3_BUCKET`; AWS creds are prefixed `APP_AWS_*` (not the reserved `AWS_*`, which Amplify/Vercel set themselves). Consent PDFs land under `cases/{caseId}/consents/{formType}/{version}/{iso}.pdf`.
+- **Resend** (`src/lib/email/index.ts`) — transactional email. `sendEmail()` for the simple HTML cases (intake notifications). The consent-invitation flow uses the Resend client directly inside `src/lib/consents/invite-sender.ts` to send richer HTML+text+List-Unsubscribe messages. `RESEND_FROM_EMAIL` defaults to `noreply@peersupportstudio.com`.
+- **Twilio** (`src/lib/sms/twilio.ts`) — SMS via a **Messaging Service SID** (not a From number) so 10DLC routing + sticky sender + opt-out are handled by Twilio. `normalizeUsPhoneE164()` returns `null` rather than guessing when a number can't be coerced — caller treats that as a validation failure. Webhook signature validation uses `validateTwilioSignature()` (HMAC-SHA1 with the auth token). Env vars: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`, optional `TWILIO_STATUS_CALLBACK_URL`.
+- **Dropbox Sign** (`src/lib/esign/dropbox-sign.ts`) — legacy. Only `tbw_consent` template is wired; webhook at `/api/webhooks/dropbox-sign` has a latent bug (writes to non-existent `case_consents` instead of `consents`, so signed-via-Dropbox-Sign consents never flipped status). Slated for removal once all five forms are migrated to in-app signing.
 - **AI** (`src/app/api/ai/*`) — currently calls Anthropic model `claude-sonnet-4-20250514`. When updating models, check the system prompts: `generate-goals` produces structured JSON written straight to the `goals` table, and `draft-note` / `draft-exit-note` follow program-specific guidance (the source documents are in the gitignored `/docs` folder).
+
+### Consent administration (in-app signing)
+
+The TBW consent forms are administered through an in-app flow that replaces Dropbox Sign. Status: **vertical slice live for TBW Consent to Participate; four other forms still show "Paper for now"** until their JSON definitions are written.
+
+The pieces:
+
+1. **Form definitions** live as JSON config under `src/lib/consents/forms/*.json` and are registered in `src/lib/consents/forms.ts`. Each form is an array of typed screens (`intro | attestation | text | longtext | date | choice | multi | signature | review | organizations`). Pre-fillable fields reference case data via `prefillFrom: "participant.firstName"` etc. Add a new form by dropping a JSON file + adding it to the `FORMS` map.
+2. **Schema** — two tables (see `seed.sql` migrations block):
+   - `consent_invitations` — one row per `(case, form, channel)` send. Resends transactionally supersede prior `sent`/`opened` rows so history stays clean. Token is `randomBytes(32).toString('base64url')`, 30-day expiry.
+   - `consent_signatures` — one row per completed signature attempt (signed OR declined). Stores `pdf_s3_key`, `pdf_sha256` (tamper-evidence), `signed_ip` (INET), `signed_user_agent`, the verbatim `signed_data` JSON, and `outcome_at_screen_key` for declines.
+3. **Send flow** — `POST /api/consents/invite` (`src/lib/consents/invite-sender.ts`) — staff endpoint, role-gated to `admin | education_coordinator | intake_specialist`. Multi-channel dispatch (SMS + email + both), per-channel success/failure aggregation, redacted audit log entries (`***-***-1234`, `***@example.com`).
+4. **Sign flow** — `POST /api/consents/sign` — accepts **Cognito session XOR invitation token** (never both). Generates PDF via `src/lib/consents/pdf.ts`, **uploads to S3 first** then inserts the signature row (with S3 cleanup on DB failure). Rolls up signed/declined status to the matching `consents` row. Marks the invitation `completed`.
+5. **UI** — `src/components/consent/consent-flow.tsx` is the mobile-first one-screen-at-a-time component used by **both** the public token route (`src/app/consent/sign/[type]/page.tsx`) and the staff in-person route (`src/app/(dashboard)/cases/[caseId]/consent/[type]/page.tsx`). Decline buttons on attestation screens jump straight to submission with `outcome: 'declined'` and `outcomeAtScreenKey` set.
+6. **PDF** — jsPDF, helvetica, "Confidential — The Book Works" footer with participant name + DOB + page numbers on every page. Decline outcomes render up to and including the decline screen, then a bold "DECLINED at this point. Process terminated." line. The PDF bytes are sha256-hashed and the digest is stored on the row.
+7. **Public sign page** — `/consent/sign/[type]?token=xxx` is allowlisted in `middleware.ts`. The page itself validates the token against `consent_invitations` (expiry, status, form-type match) before mounting `ConsentFlow`. Best-effort updates the row to `opened` on first view.
+
+**Notarization** (JCPS ROI only) — the plan is: family signs digitally in-app → PDF generates with `requires_notarization=true` → staff prints, gets Elizabeth's wet stamp in person, scans the notarized version back to the case file as a `case_documents` row. The `consent_signatures.notarized_at`/`notarized_by`/`notarized_pdf_s3_key` columns exist for tracking this; the workflow isn't wired yet (no form definition for `jcps_roi` either).
 
 ### `/docs` is gitignored and contains sensitive material
 
@@ -80,7 +109,7 @@ TBW's operational vocabulary — learner, advocate, involvement score, "stable" 
 
 - **Participant** (`participants` table; `Participant` type) — Any person on a case. `role` is `learner | caregiver | partner | other`. In practice, almost all rows are learners; guardian data is currently denormalized into participant fields rather than stored as related participants with a relationship row.
 - **Case** (`cases`; `Case`, `PipelineCase`, `ActiveCase`) — One per learner-engagement. Walks the `CaseStatus` pipeline: `referred → intake_scheduled → consent_pending → scored → assigned → active → stable → closed`. The transitions are encoded in `queries.ts` (`createCase` seeds `referred` + 5 pending consent rows; `upsertInvolvementScore` advances to `scored`; `assignCaseToAdvocate` advances to `assigned`).
-- **Consent** (`consents`; `Consent`) — Five forms auto-seeded per new case: `tbw_participation`, `jcps_roi` (notarized by Elizabeth), `cascade_jcps`, `medical_waiver`, `emergency_contact`. The `ConsentFormType` enum also defines `policies_and_procedures`, `engagement_site_enrollment`, `caregiver_consent_learner_contact` for engagement-site flows. Dropbox Sign webhook updates `signed`/`declined`/`expired` status.
+- **Consent** (`consents`; `Consent`) — Five forms auto-seeded per new case: `tbw_participation`, `jcps_roi` (notarized by Elizabeth), `cascade_jcps`, `medical_waiver`, `emergency_contact`. The `ConsentFormType` enum also defines `policies_and_procedures`, `engagement_site_enrollment`, `caregiver_consent_learner_contact` for engagement-site flows. Status is flipped to `signed`/`declined` by the in-app consent flow (see [Consent administration](#consent-administration-in-app-signing)) — the `consents` row is the snapshot; full audit lives in `consent_signatures`. Multi-channel invitations live in `consent_invitations`.
 - **Involvement Score** (`involvement_scores`; `InvolvementScore`) — 1–4 score on a 2×2 matrix of urgency × involvement. Set during intake before assignment; used by the coordinator queue to prioritize.
 - **Goal** (`goals`; `Goal`) — Per-case, may be AI-generated. Status enum is `not_started | in_progress | completed | no_progress | discontinued`. `progress_pct` is tracked. AI generation pulls from enrollment form barriers.
 - **Case Note** (`case_notes`; `CaseNote`) — Structured fields (`strengths`, `goals_discussed`, `barriers`, `next_steps`) plus a `full_note` body. `ai_drafted` flag, `goal_ids` array to tag which goals were discussed.
@@ -119,7 +148,9 @@ TBW's operational vocabulary — learner, advocate, involvement score, "stable" 
 6. ~~**"Info & Referral" terminal status missing.** Docs treat this as a distinct involvement that may close out as "Referred but not enrolled" without ever becoming advocacy. `CaseStatus` has no such terminal state — it would end up `closed` with no narrative.~~ **RESOLVED** — `CaseStatus` now includes `info_referral_closed`. When the exit wizard's reason is `referred_but_not_enrolled`, the case skips the Stable phase + data-specialist reassign and jumps straight to that terminal status.
 7. **Records-request tracking is read-only.** `getRecordsClerkBySchool` looks up clerks, and there's a `records-request-panel.tsx` component, but I don't see a table tracking *which* requests were sent or when records came back. Likely piggybacks on `case_documents`.
 8. **Goal categories** in the AI prompt (`Attendance, Academics, IEP/504, Enrollment, Credit Recovery, Transfer, Graduation, Post-secondary, Self-advocacy, Other`) are hard-coded in the generate-goals route and don't live in a config or DB enum.
-9. **No server-side role enforcement on mutation routes.** Every mutation route now requires a valid Cognito session (via `getApiUser(req)`), but none of them check that the session user's `role` matches what the action requires. The docs describe a strict role split — only Education Coordinators assign advocates, only Intake Specialists score involvement, only Advocates exit cases, only the Data Specialist closes Stable services — yet a logged-in user of any role could call any of these endpoints and have the action succeed (with their UUID as the actor). The UI gates each action by role today, but the API is the source of truth and should re-check. Affected routes: `cases/[caseId]/assign`, `cases/[caseId]/involvement-score`, `cases/[caseId]/exit`, `cases/[caseId]/enrollment`, `stable/[stableId]/log`, `goals/[goalId]`, `case-notes`.
+9. **No server-side role enforcement on mutation routes.** Every mutation route now requires a valid Cognito session (via `getApiUser(req)`), but none of them check that the session user's `role` matches what the action requires. The docs describe a strict role split — only Education Coordinators assign advocates, only Intake Specialists score involvement, only Advocates exit cases, only the Data Specialist closes Stable services — yet a logged-in user of any role could call any of these endpoints and have the action succeed (with their UUID as the actor). The UI gates each action by role today, but the API is the source of truth and should re-check. Affected routes: `cases/[caseId]/assign`, `cases/[caseId]/involvement-score`, `cases/[caseId]/exit`, `cases/[caseId]/enrollment`, `stable/[stableId]/log`, `goals/[goalId]`, `case-notes`. (Exception: `api/consents/invite` and `api/consents/signature-request` already enforce the staff role allowlist.)
+10. **Only one of the five consent forms is wired for in-app signing.** TBW Consent to Participate has a JSON definition in `src/lib/consents/forms/`. The other four (`jcps_roi`, `cascade_jcps`, `medical_waiver`, `emergency_contact`) still show "Paper for now" badges in the consents panel. Each needs a JSON file transcribed from the corresponding source PDF in `/docs`. The architecture is form-driven, so no further code changes are required once the JSON is in place — and the JCPS ROI is the tricky one because of the notarization step (see [Consent administration](#consent-administration-in-app-signing)).
+11. **Dead Dropbox Sign code.** `src/lib/esign/dropbox-sign.ts`, `src/app/api/webhooks/dropbox-sign/route.ts`, `src/app/api/cases/[caseId]/signature-request/route.ts`, and the `@dropbox/sign` package are still in the repo. The webhook also has a latent bug (writes to non-existent `case_consents` instead of `consents`). Slated for removal once gap #10 closes and Jess confirms no one is still relying on the old path. Until then, the consents panel only routes forms with a JSON definition to the new flow, so these endpoints aren't called for `tbw_participation`.
 
 ## Project Conventions
 
