@@ -1,0 +1,225 @@
+{
+  "type": "tbw_participation",
+  "version": "tbw_participation_2025_08",
+  "name": "TBW Consent to Participate and Access Records",
+  "description": "Consent to participate in The Book Works programs plus learner demographic information.",
+  "screens": [
+    {
+      "key": "intro",
+      "type": "intro",
+      "prompt": "Welcome to The Book Works",
+      "helpText": "The Book Works is a non-profit organization that advocates for youth and young adults to have equitable access to education and employment. We may connect you with an Education Advocate, a TBW-hosted program, or opportunities to build connections and learn new things.\n\nThe Book Works is not part of the court or school systems. We do not provide legal advice or homeschool curriculum. All programs and services are voluntary."
+    },
+    {
+      "key": "info_protections",
+      "type": "intro",
+      "prompt": "How your information is protected",
+      "helpText": "We may collect information on your education history and goals, contact information, services received, and demographics. Sharing this information with The Book Works is voluntary and all information is kept in a confidential database that is exclusive to The Book Works.\n\nIn accordance with the Family Educational Rights and Privacy Act (FERPA), all information will be kept private unless required by law. You or your parent/guardian (if under 18) must provide consent before we access or share your information, and you may revoke that permission at any time."
+    },
+    {
+      "key": "attest_goals",
+      "type": "attestation",
+      "prompt": "I understand the goals of The Book Works are to assist the participant to reach their education goals, and that The Book Works does not provide legal advice.",
+      "agreeLabel": "Yes, I understand",
+      "declineLabel": "No, I do not consent",
+      "required": true
+    },
+    {
+      "key": "attest_direct_contact",
+      "type": "attestation",
+      "prompt": "I understand that The Book Works may directly contact the participant of the program.",
+      "agreeLabel": "Yes, I understand",
+      "declineLabel": "No, I do not consent",
+      "required": true
+    },
+    {
+      "key": "attest_followup",
+      "type": "attestation",
+      "prompt": "I understand The Book Works may follow up on the participant's school attendance after services.",
+      "agreeLabel": "Yes, I understand",
+      "declineLabel": "No, I do not consent",
+      "required": true
+    },
+    {
+      "key": "sharing_organizations",
+      "type": "organizations",
+      "prompt": "I give consent for The Book Works to access and share information about the participant with:",
+      "helpText": "List any schools, agencies, or community organizations. Leave any field blank if it does not apply."
+    },
+    {
+      "key": "learner_section_intro",
+      "type": "intro",
+      "prompt": "About the Learner",
+      "helpText": "A few questions about the participant so we can serve them well. Most of this is already on file — just confirm or update."
+    },
+    {
+      "key": "preferred_name",
+      "type": "text",
+      "prompt": "Preferred name",
+      "placeholder": "Goes by…",
+      "prefillFrom": "participant.preferredName"
+    },
+    {
+      "key": "pronouns",
+      "type": "choice",
+      "prompt": "Pronouns",
+      "options": [
+        { "value": "he/him", "label": "he/him" },
+        { "value": "she/her", "label": "she/her" },
+        { "value": "they/them", "label": "they/them" },
+        { "value": "she/they", "label": "she/they" },
+        { "value": "he/they", "label": "he/they" },
+        { "value": "prefer_not_to_say", "label": "Prefer not to say" }
+      ],
+      "prefillFrom": "participant.pronouns"
+    },
+    {
+      "key": "cell_number",
+      "type": "text",
+      "prompt": "Cell number",
+      "placeholder": "(502) 555-0000",
+      "prefillFrom": "participant.phonePrimary"
+    },
+    {
+      "key": "email",
+      "type": "text",
+      "prompt": "Email address",
+      "placeholder": "you@example.com",
+      "prefillFrom": "participant.email"
+    },
+    {
+      "key": "guardian_phone",
+      "type": "text",
+      "prompt": "Guardian phone (if under 18)",
+      "placeholder": "(502) 555-0000"
+    },
+    {
+      "key": "guardian_email",
+      "type": "text",
+      "prompt": "Guardian email (if under 18)",
+      "placeholder": "guardian@example.com"
+    },
+    {
+      "key": "current_school",
+      "type": "text",
+      "prompt": "Current or most recent school",
+      "placeholder": "School name",
+      "prefillFrom": "participant.currentSchool"
+    },
+    {
+      "key": "current_grade",
+      "type": "choice",
+      "prompt": "Current or most recent grade",
+      "options": [
+        { "value": "6",   "label": "6th grade" },
+        { "value": "7",   "label": "7th grade" },
+        { "value": "8",   "label": "8th grade" },
+        { "value": "9",   "label": "9th grade" },
+        { "value": "10",  "label": "10th grade" },
+        { "value": "11",  "label": "11th grade" },
+        { "value": "12",  "label": "12th grade" },
+        { "value": "ged", "label": "GED" },
+        { "value": "post_secondary", "label": "Post-secondary" },
+        { "value": "not_enrolled",   "label": "Not currently enrolled" }
+      ],
+      "prefillFrom": "participant.currentGrade"
+    },
+    {
+      "key": "address",
+      "type": "longtext",
+      "prompt": "Current address (street, city, ZIP)",
+      "placeholder": "123 Main St, Louisville, 40202",
+      "prefillFrom": "participant.address"
+    },
+    {
+      "key": "dob",
+      "type": "date",
+      "prompt": "Date of birth",
+      "required": true,
+      "prefillFrom": "participant.dateOfBirth"
+    },
+    {
+      "key": "race_ethnicity",
+      "type": "text",
+      "prompt": "How do you describe your race and ethnicity?",
+      "placeholder": "In your own words…"
+    },
+    {
+      "key": "hispanic_latine",
+      "type": "choice",
+      "prompt": "Are you Hispanic / Latine?",
+      "options": [
+        { "value": "yes", "label": "Yes" },
+        { "value": "no",  "label": "No" },
+        { "value": "prefer_not_to_say", "label": "Prefer not to say" }
+      ]
+    },
+    {
+      "key": "preferred_language",
+      "type": "text",
+      "prompt": "What is your preferred language?",
+      "placeholder": "e.g. English, Spanish, Swahili"
+    },
+    {
+      "key": "gender_identity",
+      "type": "text",
+      "prompt": "How do you describe your gender / gender identity?",
+      "placeholder": "In your own words…"
+    },
+    {
+      "key": "goals",
+      "type": "multi",
+      "prompt": "What are your goals for working with The Book Works? (select all that apply)",
+      "options": [
+        { "value": "education_advocate",  "label": "Work with an Education Advocate" },
+        { "value": "engagement_hub",      "label": "Attend an Education Engagement Hub" },
+        { "value": "afterschool_summer",  "label": "Participate in an after-school or summer program" },
+        { "value": "other",                "label": "Other (write in below)" }
+      ]
+    },
+    {
+      "key": "goals_other",
+      "type": "longtext",
+      "prompt": "If you selected \"Other\" above, please describe.",
+      "placeholder": "Optional"
+    },
+    {
+      "key": "health_concerns",
+      "type": "longtext",
+      "prompt": "Are there any physical or behavioral health concerns (including allergies and medical conditions) that impact you at school? What should we know?",
+      "placeholder": "Optional"
+    },
+    {
+      "key": "trusted_adult_1",
+      "type": "text",
+      "prompt": "Trusted adult #1 — name and contact",
+      "helpText": "The Book Works can talk with trusted adults about your goals and needs.",
+      "placeholder": "Name + phone or email"
+    },
+    {
+      "key": "trusted_adult_2",
+      "type": "text",
+      "prompt": "Trusted adult #2 — name and contact",
+      "placeholder": "Name + phone or email"
+    },
+    {
+      "key": "other_info",
+      "type": "longtext",
+      "prompt": "Anything else you would like us to know?",
+      "placeholder": "Optional"
+    },
+    {
+      "key": "review",
+      "type": "review",
+      "prompt": "Review your answers",
+      "helpText": "Take a moment to look over what you've entered. You can use Back to fix anything before signing."
+    },
+    {
+      "key": "signature",
+      "type": "signature",
+      "prompt": "Type your full name to sign",
+      "helpText": "By typing your name below and tapping Sign, you are electronically signing this Consent to Participate and Access Records.",
+      "required": true
+    }
+  ]
+}

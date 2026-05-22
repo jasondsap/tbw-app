@@ -467,7 +467,10 @@ export function CaseDetailClient({ caseData, goals, notes, consents }: CaseDetai
           <ConsentsPanel
             caseId={caseData.id}
             participantName={participantName}
+            participantEmail={caseData.email ?? null}
+            participantPhone={caseData.phone_primary ?? null}
             consents={consents as any[]}
+            userRole={caseData.user_role}
           />
         )}
         {activeTab === 'records' && (

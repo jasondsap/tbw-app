@@ -6,6 +6,10 @@ const PUBLIC_PATHS = [
   '/login',
   '/_next',
   '/favicon',
+  // Tokenized consent flow — accessed by participants/guardians who don't have
+  // Cognito accounts. Authn happens via the token on the request body.
+  '/consent/sign',
+  '/api/consents/sign',
 ]
 
 export async function middleware(req: NextRequest) {

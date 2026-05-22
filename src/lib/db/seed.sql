@@ -15,6 +15,70 @@ ALTER TABLE cases ADD COLUMN IF NOT EXISTS exit_narrative TEXT;
 -- as its own statement in the Neon SQL editor.
 ALTER TYPE case_status ADD VALUE IF NOT EXISTS 'info_referral_closed';
 
+-- In-app consent signing infrastructure (replaces Dropbox Sign for the four
+-- non-notarized forms). Two tables:
+--   consent_invitations — one row per (case, form, channel) send; supersedes
+--     prior open invitations on resend so history stays clean.
+--   consent_signatures  — one row per completed signature attempt (signed
+--     OR declined). Stores the PDF s3 key + sha256 for tamper-evidence.
+CREATE TABLE IF NOT EXISTS consent_invitations (
+  id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  case_id                  UUID NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+  form_type                TEXT NOT NULL,           -- matches consents.form_type
+  token                    TEXT NOT NULL UNIQUE,
+  channel                  TEXT NOT NULL CHECK (channel IN ('sms', 'email')),
+  sent_to                  TEXT NOT NULL,            -- phone or email actually sent to
+  status                   TEXT NOT NULL DEFAULT 'sent'
+                            CHECK (status IN ('sent', 'opened', 'completed', 'expired', 'superseded', 'failed')),
+  expires_at               TIMESTAMPTZ NOT NULL,
+  sent_by                  UUID REFERENCES users(id),
+  sent_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at             TIMESTAMPTZ,
+  superseded_at            TIMESTAMPTZ,
+  provider_message_id      TEXT,                     -- Twilio sid or Resend id
+  send_status              TEXT,
+  send_error               TEXT,
+  custom_message           TEXT,
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_consent_invitations_case_id ON consent_invitations(case_id);
+CREATE INDEX IF NOT EXISTS idx_consent_invitations_token ON consent_invitations(token);
+CREATE INDEX IF NOT EXISTS idx_consent_invitations_status ON consent_invitations(status);
+
+CREATE TABLE IF NOT EXISTS consent_signatures (
+  id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  case_id                  UUID NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+  consent_id               UUID REFERENCES consents(id),
+  form_type                TEXT NOT NULL,
+  form_version             TEXT NOT NULL,            -- e.g. 'tbw_participation_2025_08'
+  invitation_id            UUID REFERENCES consent_invitations(id),
+  administered_by          TEXT NOT NULL CHECK (administered_by IN ('staff', 'self_service')),
+  administered_by_user_id  UUID REFERENCES users(id),
+  signed_name              TEXT NOT NULL,
+  signed_data              JSONB NOT NULL,           -- captured form answers
+  signed_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  signed_ip                INET,
+  signed_user_agent        TEXT,
+  pdf_s3_key               TEXT NOT NULL,
+  pdf_sha256               TEXT NOT NULL,
+  outcome                  TEXT NOT NULL DEFAULT 'signed'
+                            CHECK (outcome IN ('signed', 'declined')),
+  outcome_at_screen_key    TEXT,                     -- when declined: which screen
+  requires_notarization    BOOLEAN NOT NULL DEFAULT FALSE,
+  notarized_at             TIMESTAMPTZ,
+  notarized_by             TEXT,
+  notarized_pdf_s3_key     TEXT,
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT consent_outcome_chk CHECK (
+    (outcome = 'signed'   AND outcome_at_screen_key IS NULL) OR
+    (outcome = 'declined' AND outcome_at_screen_key IS NOT NULL)
+  )
+);
+CREATE INDEX IF NOT EXISTS idx_consent_signatures_case_id ON consent_signatures(case_id);
+CREATE INDEX IF NOT EXISTS idx_consent_signatures_consent_id ON consent_signatures(consent_id);
+CREATE INDEX IF NOT EXISTS idx_consent_signatures_form_type ON consent_signatures(form_type);
+
 -- ── Users (staff) ────────────────────────────────────────────
 INSERT INTO users (id, cognito_sub, first_name, last_name, email, role, phone, is_active, created_at)
 VALUES
